@@ -1,7 +1,9 @@
 # Computerdesignment-contest
 
 For our computerdesignment-contest.
-采用本地命令行进行操作，单次具体流程如下：
+
+---
+## 采用本地命令行进行操作，单次具体流程如下：
 
 1. `git switch -c branch-name`（这个是自己设置的，可以用中文，用feature/开头）  #创建新的分支
 2. **新建文件保存** #建立一个新的单独的文件储存自己部分的功能
