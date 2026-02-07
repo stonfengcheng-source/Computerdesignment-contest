@@ -9,7 +9,7 @@ For our computerdesignment-contest.
 2. **新建文件保存** #建立一个新的单独的文件储存自己部分的功能
 3. `git add .`  #暂存提交，还未提交远端和本地
 4. `git commit -m "注释"` (说明提交的功能是干嘛的） #提交到本地仓库，注释是本次提交的说明
-5. `git push origin “你刚刚创建的分支名字”`  #提交到远端仓库
+5. `git push origin “你刚刚创建的分支名字”`  #提交到远端仓库并且必须切换到对应的分支提交！！
 6. 此时 GitHub 上边应该有 PR 请求，回到网页勾选 reviewer 的人，必须确定无误后才能同意 PR 请求并 merge #每次必须从最新的 main 分支提交上去（重点!)
 
 ---
@@ -22,6 +22,7 @@ For our computerdesignment-contest.
 4. `git fetch origin`  #云端的更新信息“拉”到本地
 5. `git status`  #对比是否最新，如果不是最新，执行第六步
 6. `git pull origin main`  #拉取，将本地 main 分支更新到最新
+7. `git checkout branch-name`  #切换回自己新建的分支,所有操作在新建的分支操作！
 
 ---
 
@@ -29,5 +30,6 @@ For our computerdesignment-contest.
 
 1. 检查 main 分支是否最新
 2. 不是则更新
+3. 更新后切换回去
 
 > **注意：** 所有的功能分支合并到 main 分支操作都要在网页端操作，并且需要其他人审核
