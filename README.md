@@ -19,8 +19,9 @@ For our computerdesignment-contest.
 1. `git branch`  #查看当前所处的分支
 2. 如果出现 `* main`，则处于 main 分支，否则执行第三步
 3. `git checkout main`  #切换到 main 分支
-4. `git status`  #对比是否最新，如果不是最新，执行第五步
-5. `git pull origin main`  #拉取，将本地 main 分支更新到最新
+4. `git fetch origin`  #云端的更新信息“拉”到本地
+5. `git status`  #对比是否最新，如果不是最新，执行第六步
+6. `git pull origin main`  #拉取，将本地 main 分支更新到最新
 
 ---
 
