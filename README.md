@@ -12,7 +12,7 @@ For our computerdesignment-contest.
 1.git branch                                   #查看当前所处的分支
 2.如果出现* main，则处于main分支，否则执行第三步
 3.git checkout main                             #切换到main分支
-4.git status                                    #对比是否最新
+4.git status                                    #对比是否最新，如果不是最新，执行第五步
 5.git pull origin main                          #拉取，将本地main分支更新到最新
 
 每次准备开发前的准备
