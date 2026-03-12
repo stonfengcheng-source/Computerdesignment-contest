@@ -262,6 +262,7 @@ const submitAnnotation = () => {
 .label {
   padding: 20px;
   background-color: #0A0F1F;
+  background-color: #f8fafc;
   min-height: 100vh;
 }
 
@@ -270,12 +271,16 @@ const submitAnnotation = () => {
   background-color: #1A1D2A;
   border: 1px solid #2A2F3A;
   color: #B0B3C1;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
   height: calc(100vh - 120px);
   overflow: hidden;
 }
 
 .card-header {
   color: #B0B3C1;
+  color: #334155;
   font-weight: 500;
 }
 
@@ -299,16 +304,19 @@ const submitAnnotation = () => {
   margin-bottom: 20px;
   padding: 15px;
   background-color: #2A2F3A;
+  background-color: #e2e8f0;
   border-radius: 8px;
 }
 
 .selected-text h4 {
   color: #B0B3C1;
+  color: #334155;
   margin-bottom: 10px;
 }
 
 .selected-text p {
   color: #B0B3C1;
+  color: #334155;
   line-height: 1.6;
   margin: 0;
 }
@@ -316,21 +324,26 @@ const submitAnnotation = () => {
 :deep(.el-divider__text) {
   color: #B0B3C1;
   background-color: #1A1D2A;
+  color: #334155;
+  background-color: #ffffff;
 }
 
 :deep(.el-form-item__label) {
   color: #B0B3C1;
+  color: #334155;
 }
 
 :deep(.el-radio__label),
 :deep(.el-checkbox__label),
 :deep(.el-select-dropdown__item) {
   color: #B0B3C1;
+  color: #334155;
 }
 
 :deep(.el-radio),
 :deep(.el-checkbox) {
   color: #B0B3C1;
+  color: #334155;
 }
 
 .submit-btn {
@@ -339,5 +352,6 @@ const submitAnnotation = () => {
 
 :deep(.el-empty__description p) {
   color: #7A7F8A;
+  color: #94a3b8;
 }
 </style>

@@ -159,20 +159,20 @@ const initBarChart = () => {
     legend: {
       data: ['文本得分', '行为得分', '社交得分'],
       textStyle: {
-        color: '#B0B3C1'
+        color: '#334155'
       }
     },
     xAxis: {
       type: 'category',
       data: ['信用分项'],
       axisLabel: {
-        color: '#B0B3C1'
+        color: '#334155'
       }
     },
     yAxis: {
       type: 'value',
       axisLabel: {
-        color: '#B0B3C1'
+        color: '#334155'
       }
     },
     series: [
@@ -221,14 +221,14 @@ const initLineChart = () => {
       type: 'category',
       data: creditData.value.trendData.dates,
       axisLabel: {
-        color: '#B0B3C1',
+        color: '#334155',
         rotate: 45
       }
     },
     yAxis: {
       type: 'value',
       axisLabel: {
-        color: '#B0B3C1'
+        color: '#334155'
       }
     },
     series: [{
@@ -272,13 +272,13 @@ onUnmounted(() => {
 <style scoped>
 .credit {
   padding: 20px;
-  background-color: #0A0F1F;
+  background-color: #f8fafc;
   min-height: 100vh;
 }
 
 .search-card {
-  background-color: #1A1D2A;
-  border: 1px solid #2A2F3A;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   margin-bottom: 20px;
 }
 
@@ -292,13 +292,13 @@ onUnmounted(() => {
 }
 
 .search-input :deep(.el-input__inner) {
-  background-color: #2A2F3A;
-  border: 1px solid #3A3F4A;
-  color: #B0B3C1;
+  background-color: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  color: #334155;
 }
 
 .search-input :deep(.el-input__inner::placeholder) {
-  color: #7A7F8A;
+  color: #94a3b8;
 }
 
 .results {
@@ -306,13 +306,13 @@ onUnmounted(() => {
 }
 
 .score-card {
-  background-color: #1A1D2A;
-  border: 1px solid #2A2F3A;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   text-align: center;
 }
 
 .card-header {
-  color: #B0B3C1;
+  color: #334155;
   font-weight: 500;
 }
 
@@ -340,7 +340,7 @@ onUnmounted(() => {
 
 .max-score {
   font-size: 12px;
-  color: #7A7F8A;
+  color: #94a3b8;
 }
 
 .chart-container {
@@ -353,6 +353,6 @@ onUnmounted(() => {
 }
 
 :deep(.el-empty__description p) {
-  color: #7A7F8A;
+  color: #94a3b8;
 }
 </style>

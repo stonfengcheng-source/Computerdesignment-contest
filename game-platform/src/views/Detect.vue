@@ -130,36 +130,36 @@ const getProgressColor = (toxicity) => {
 <style scoped>
 .detect {
   padding: 20px;
-  background-color: #0A0F1F;
+  background-color: #f8fafc;
   min-height: 100vh;
 }
 
 .input-card,
 .result-card {
-  background-color: #1A1D2A;
-  border: 1px solid #2A2F3A;
-  color: #B0B3C1;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
 }
 
 .card-header {
-  color: #B0B3C1;
+  color: #334155;
   font-weight: 500;
 }
 
 .text-input {
-  background-color: #2A2F3A;
-  border: 1px solid #3A3F4A;
-  color: #B0B3C1;
+  background-color: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  color: #334155;
 }
 
 .text-input :deep(.el-textarea__inner) {
-  background-color: #2A2F3A;
+  background-color: #e2e8f0;
   border: none;
-  color: #B0B3C1;
+  color: #334155;
 }
 
 .text-input :deep(.el-textarea__inner::placeholder) {
-  color: #7A7F8A;
+  color: #94a3b8;
 }
 
 .detect-btn {
@@ -171,7 +171,7 @@ const getProgressColor = (toxicity) => {
 }
 
 .result-section h4 {
-  color: #B0B3C1;
+  color: #334155;
   margin-bottom: 15px;
   font-size: 16px;
 }
@@ -190,11 +190,11 @@ const getProgressColor = (toxicity) => {
 }
 
 .highlighted-text {
-  background-color: #2A2F3A;
+  background-color: #e2e8f0;
   padding: 15px;
   border-radius: 8px;
   line-height: 1.6;
-  color: #B0B3C1;
+  color: #334155;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -208,7 +208,7 @@ const getProgressColor = (toxicity) => {
 }
 
 :deep(.el-progress-circle__track) {
-  stroke: #2A2F3A;
+  stroke: #e2e8f0;
 }
 
 :deep(.el-progress-circle__path) {
@@ -216,6 +216,6 @@ const getProgressColor = (toxicity) => {
 }
 
 :deep(.el-empty__description p) {
-  color: #7A7F8A;
+  color: #94a3b8;
 }
 </style>

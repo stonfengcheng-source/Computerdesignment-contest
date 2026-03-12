@@ -80,7 +80,7 @@ const storySections = [
   {
     tag: '核心引擎', title: '首创多模态分析净化平台', desc: '聚焦复杂游戏环境，将“关系流+文本流+行为流”深度融合，打破传统单一文本检测瓶颈，精准打击隐蔽违规行为。', techs: ['XGBoost 决策融合', '跨流特征提取'], visualText: '多模态融合模型图'
   },
-  {
+ {
     tag: '语义解析', title: '阴阳怪气与网络黑话', desc: '面向游戏特色交流体系，结合情感与黑话词库，综合剥离语言毒性，精准识别暗语和嘲讽。', techs: ['BERT 语义理解', 'Wav2Vec2 情绪识别'], visualText: '毒性文本过滤演示'
   },
   {
@@ -106,7 +106,9 @@ const bubbleDataTree = {
     { id: 'credit', radius: 85, label: '信用评级', desc: '跨平台打分', type: 'feature', route: '/credit' },
     { id: 'sarcasm', radius: 75, label: '情感剥离', desc: '阴阳怪气检测', type: 'feature', route: '/detect' },
     { id: 'slang', radius: 75, label: '对抗词库', desc: '网络黑话解析', type: 'feature', route: '/detect' },
-    { id: 'behavior', radius: 75, label: '异常定位', desc: '言行不一检测', type: 'feature', route: '/detect' }
+    { id: 'behavior', radius: 75, label: '异常定位', desc: '言行不一检测', type: 'feature', route: '/detect' },
+    { id: 'slang', radius: 75, label: '对抗词库', desc: '网络黑话解析', type: 'feature', route: '/label' },
+    { id: 'behavior', radius: 75, label: '异常定位', desc: '言行不一检测', type: 'feature', route: '/dashboard' }
   ]
 };
 
@@ -136,6 +138,23 @@ const initBubbleChart = () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const nodes = flattenNodes(bubbleDataTree);
+  const featureNodes = nodes.filter(n => n.type === 'feature');
+
+  let idx = 0;
+  while (idx < featureNodes.length) {
+    const node = featureNodes[idx];
+    const angle = (Math.PI * 2 * idx) / featureNodes.length;
+    const spreadRadius = Math.min(width, height) * 0.26;
+    node.x = width / 2 + Math.cos(angle) * spreadRadius;
+    node.y = height / 2 + Math.sin(angle) * spreadRadius;
+    idx++;
+  }
+
+  const centerNode = nodes.find(n => n.type === 'center');
+  if (centerNode) {
+    centerNode.x = width / 2;
+    centerNode.y = height / 2;
+  }
 
   d3.select(bubbleChart.value).selectAll('*').remove();
   const svg = d3.select(bubbleChart.value).append('svg').attr('width', width).attr('height', height);
@@ -143,8 +162,11 @@ const initBubbleChart = () => {
   // 强化物理引擎：增加向中心的聚拢力和节点间的弹性碰撞
   simulation = d3.forceSimulation(nodes)
     .force('charge', d3.forceManyBody().strength(-150)) // 适当的排斥力
+    .force('charge', d3.forceManyBody().strength(-250)) // 增强排斥力，让布局更松弛
     .force('center', d3.forceCenter(width / 2, height / 2 - 30))
     .force('collide', d3.forceCollide().radius(d => d.r + 8).iterations(4))
+    .force('collide', d3.forceCollide().radius(d => d.r + 24).iterations(4))
+    .force('radial', d3.forceRadial(d => d.type === 'center' ? 0 : Math.min(width, height) * 0.23, width / 2, height / 2).strength(0.16))
     .force('y', d3.forceY(height / 2).strength(0.05)) // 增加 Y 轴维稳力
     .force('x', d3.forceX(width / 2).strength(0.05)); // 增加 X 轴维稳力
 
@@ -183,7 +205,6 @@ const initBubbleChart = () => {
     .text(d => d.desc)
     .attr('text-anchor', 'middle').attr('dy', '1.6em')
     .style('fill', '#475569').style('font-size', d => d.r / 6 + 'px').style('font-weight', '600')
-    .style('pointer-events', 'none');
 
   // 【核心修复】：让气泡出场时产生强烈的弹跳感
   simulation.alpha(1).restart();
