@@ -293,7 +293,7 @@ const goToModule = (path) => {
 
 .upload-area.has-file {
   border: none;
-  background: #000;
+  background: #e2e8f0;
 }
 
 .file-input {
@@ -512,4 +512,5 @@ const goToModule = (path) => {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 </style>
