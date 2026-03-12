@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'landing',
-      component: () => import('../views/LandingView.vue'), // 刚才创建的气泡展示页
+      component: () => import('../views/LandingView.vue'),
     },
     {
       path: '/login',
@@ -17,7 +17,7 @@ const router = createRouter({
 
     // --- 包含系统导航栏/侧边栏的业务视图 ---
     {
-      path: '/systemRoot', // 虚拟根节点，用于挂载 Layout
+      path: '/systemRoot',
       component: () => import('../views/Layout.vue'),
       children: [
         {
@@ -44,6 +44,12 @@ const router = createRouter({
           path: '/label',
           name: 'label',
           component: () => import('../views/Label.vue'),
+        },
+        // 👇 就是这里！确保它 import 的是 Behavior.vue，而不是 Dashboard.vue
+        {
+          path: '/behavior',
+          name: 'behavior',
+          component: () => import('../views/Behavior.vue'),
         },
         {
           path: '/about',

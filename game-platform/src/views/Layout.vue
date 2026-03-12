@@ -50,12 +50,13 @@ import { useRouter, useRoute } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 
-// 原始菜单配置
+// 原始菜单配置 (已增加言行不一功能行)
 const rawMenuData = [
   { route: '/dashboard', label: '控制台总览', icon: '📊' },
   { route: '/trace', label: '风险溯源拓扑', icon: '🕸️' },
   { route: '/credit', label: '跨平台信用评级', icon: '🛡️' },
   { route: '/detect', label: '多模态毒性检测', icon: '🎭' },
+  { route: '/behavior', label: '言行不一检测', icon: '🔍' },
   { route: '/label', label: '对抗数据标注', icon: '🏷️' }
 ];
 
@@ -230,7 +231,6 @@ const doLogout = () => {
   flex: 1;
   overflow-y: auto;
   position: relative;
-  /* 内边距在子组件中控制，这里保持全屏 */
 }
 
 /* 路由切换动画 */
