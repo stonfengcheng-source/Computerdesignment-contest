@@ -98,17 +98,17 @@ const goToLogin = () => {
   router.push('/login');
 };
 
-// --- D3 气泡力导向图 (采用 DFS 展平) ---
+// --- D3 气泡数据 (已去重并设置中心跳转) ---
 const bubbleDataTree = {
-  id: 'core', radius: 110, label: '多模态融合核心', desc: 'Deep Blue', type: 'center', route: '',
+  // 修改中心节点：设置 route 为 /dashboard
+  id: 'core', radius: 110, label: '多模态融合核心', desc: '进入控制台', type: 'center', route: '/dashboard',
   children: [
     { id: 'trace', radius: 85, label: '风险溯源', desc: '找出污染源', type: 'feature', route: '/trace' },
     { id: 'credit', radius: 85, label: '信用评级', desc: '跨平台打分', type: 'feature', route: '/credit' },
     { id: 'sarcasm', radius: 75, label: '情感剥离', desc: '阴阳怪气检测', type: 'feature', route: '/detect' },
-    { id: 'slang', radius: 75, label: '对抗词库', desc: '网络黑话解析', type: 'feature', route: '/detect' },
-    { id: 'behavior', radius: 75, label: '异常定位', desc: '言行不一检测', type: 'feature', route: '/detect' },
     { id: 'slang', radius: 75, label: '对抗词库', desc: '网络黑话解析', type: 'feature', route: '/label' },
-    { id: 'behavior', radius: 75, label: '异常定位', desc: '言行不一检测', type: 'feature', route: '/dashboard' }
+    // 仅保留一个异常定位（言行不一）节点，指向新创建的路由
+    { id: 'behavior', radius: 75, label: '言行不一', desc: '异常行为定位', type: 'feature', route: '/behavior' }
   ]
 };
 
