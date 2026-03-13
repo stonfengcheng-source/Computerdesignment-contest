@@ -8,6 +8,21 @@
       <button class="export-btn">导出监控报告</button>
     </header>
 
+    <div class="upload-box" style="margin-bottom: 24px; padding: 20px; background: #fff; border-radius: 16px; border: 1px dashed #0ea5e9; display: flex; align-items: center; justify-content: center;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <span style="font-weight: 600; color: #64748b;">上传待检视频：</span>
+        <input type="file" @change="handleFileChange" accept="video/*" style="color: #64748b;" />
+        <button
+          @click="startDetection"
+          :disabled="isLoading"
+          style="padding: 10px 28px; background: #0ea5e9; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; transition: opacity 0.3s;"
+          :style="{ opacity: isLoading ? 0.6 : 1 }"
+        >
+          {{ isLoading ? '🚀 AI 矩阵运算中...' : '启动 M-IARD 深度检测' }}
+        </button>
+      </div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-card" v-for="(stat, index) in statsConfig" :key="index">
         <div class="stat-icon">{{ stat.icon }}</div>
@@ -84,80 +99,100 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+// 文件路径: src/views/Behavior.vue
+import { ref, onMounted } from 'vue'; // 1. 必须引入 onMounted 用于初始化
+import axios from 'axios';
 
-// 顶部统计数据
-const statsConfig = ref([
-  { label: '今日扫描对局', value: '12,450', icon: '🎮', trend: '+12%', trendType: 'up' },
-  { label: '言语伪装拦截', value: '843', icon: '🎭', trend: '+5%', trendType: 'up' },
-  { label: '高危言行背离', value: '156', icon: '⚠️', trend: '-2%', trendType: 'down' },
-  { label: '判定准确率', value: '98.2%', icon: '🎯', trend: '+0.4%', trendType: 'up' }
-]);
+// 状态控制
+const selectedFile = ref(null);
+const isLoading = ref(false);
+const mockAlerts = ref([]); // 初始为空，由 fetchHistory 填充
 
-// 模拟“言行不一”的典型案例数据
-const mockAlerts = ref([
-  {
-    id: 1,
-    playerId: 'ID: 774892_Yasuo',
-    textSentiment: 'positive',
-    textSummary: '积极互动',
-    chatExcerpt: '我的我的，兄弟们稳住能赢，等我发育。',
-    behaviorType: 'negative',
-    behaviorSummary: '恶意送人头 / 塔下挂机',
-    kda: '0/12/1',
-    kp: 5,
-    confidence: 96,
-    verdict: '伪装型演员',
-    verdictClass: 'critical'
-  },
-  {
-    id: 2,
-    playerId: 'ID: 992100_LeeSin',
-    textSentiment: 'neutral',
-    textSummary: '中立防卫',
-    chatExcerpt: '哎呀卡了一下，不好意思。',
-    behaviorType: 'negative',
-    behaviorSummary: '野区打转 / 规避团战',
-    kda: '1/3/0',
-    kp: 12,
-    confidence: 88,
-    verdict: '隐蔽消极比赛',
-    verdictClass: 'warning'
-  },
-  {
-    id: 3,
-    playerId: 'ID: 110293_Vayne',
-    textSentiment: 'negative',
-    textSummary: '言语暴躁',
-    chatExcerpt: '辅助怎么这么菜？会不会玩？',
-    behaviorType: 'positive',
-    behaviorSummary: '高频输出 / 积极推进',
-    kda: '15/2/8',
-    kp: 85,
-    confidence: 92,
-    verdict: '暴躁老哥(无消极行为)',
-    verdictClass: 'safe'
-  },
-  {
-    id: 4,
-    playerId: 'ID: 556721_Teemo',
-    textSentiment: 'positive',
-    textSummary: '友好伪装',
-    chatExcerpt: '大家辛苦了，这把我的锅。',
-    behaviorType: 'negative',
-    behaviorSummary: '无效伤害 / 基地挂机',
-    kda: '0/0/0',
-    kp: 0,
-    confidence: 99,
-    verdict: '挂机脚本',
-    verdictClass: 'critical'
+// 处理文件选择
+const handleFileChange = (event) => {
+  selectedFile.value = event.target.files[0];
+};
+
+// --- 新增逻辑：从数据库读取历史记录 ---
+const fetchHistory = async () => {
+  try {
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/records');
+    // 将后端返回的 InconsistencyRecord 列表映射为前端 UI 需要的格式
+    const history = response.data.data.map(item => ({
+      id: item.id,
+      playerId: item.player_id,
+      textSentiment: item.text_prob > 0.6 ? 'positive' : 'negative',
+      textSummary: item.text_prob > 0.6 ? '表面积极' : '语义异常',
+      chatExcerpt: '历史分析概率: ' + item.text_prob.toFixed(4),
+      behaviorType: item.behavior_error > 0.7 ? 'negative' : 'positive',
+      behaviorSummary: item.behavior_error > 0.7 ? '轨迹异常(高Loss)' : '移动正常',
+      kda: 'N/A', // 视频解析阶段 KDA 暂由后台逻辑计算
+      kp: (item.toxicity_score * 100).toFixed(1),
+      confidence: Math.round(item.toxicity_score * 100),
+      verdict: item.is_inconsistent ? '判定：言行不一' : '判定：正常',
+      verdictClass: item.is_inconsistent ? 'critical' : 'safe'
+    }));
+    // 将读取到的历史记录倒序排列展示
+    mockAlerts.value = history.reverse();
+  } catch (error) {
+    console.error("加载历史记录失败:", error);
   }
-]);
+};
+
+// 核心：真实接入后端 M-IARD 算法接口
+const startDetection = async () => {
+  if (!selectedFile.value) {
+    alert("请选择要分析的对局视频片段");
+    return;
+  }
+
+  isLoading.value = true;
+  const formData = new FormData();
+  formData.append('player_id', 'Current_User_001'); // 实际开发可从登录信息获取
+  formData.append('video_file', selectedFile.value);
+
+  try {
+    // 调用本地真 AI 后端
+    const response = await axios.post('http://127.0.0.1:8000/api/v1/analyze/video', formData);
+    const serverResult = response.data.result;
+
+    // 映射后端实时返回的结果
+    const newRecord = {
+      id: Date.now(),
+      playerId: '最新检测: ' + selectedFile.value.name,
+      textSentiment: serverResult.details.text_sentiment_prob > 0.6 ? 'positive' : 'negative',
+      textSummary: serverResult.details.text_sentiment_prob > 0.6 ? '表面积极' : '语义异常',
+      chatExcerpt: '文本概率: ' + serverResult.details.text_sentiment_prob.toFixed(4),
+      behaviorType: serverResult.details.behavior_anomaly_score > 0.7 ? 'negative' : 'positive',
+      behaviorSummary: serverResult.details.behavior_anomaly_score > 0.7 ? '轨迹异常(高Loss)' : '移动正常',
+      kda: 'N/A',
+      kp: (serverResult.details.final_toxicity_score * 100).toFixed(1),
+      confidence: Math.round(serverResult.details.final_toxicity_score * 100),
+      verdict: serverResult.is_inconsistent ? '判定：言行不一' : '判定：正常',
+      verdictClass: serverResult.is_inconsistent ? 'critical' : 'safe'
+    };
+
+    // 插入到首行
+    mockAlerts.value.unshift(newRecord);
+    alert("AI 引擎分析完成，已存入数据库。");
+
+  } catch (error) {
+    console.error("后端引擎连接失败:", error);
+    alert("AI 引擎未启动，请确保后端 ENABLE_AI=True 且服务在运行");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 页面挂载时自动执行历史数据读取
+onMounted(() => {
+  fetchHistory();
+});
 
 const getConfidenceColor = (val) => {
-  if (val >= 95) return '#ef4444'; // 红
-  if (val >= 85) return '#f59e0b'; // 橙
-  return '#10b981'; // 绿
+  if (val >= 80) return '#ef4444';
+  if (val >= 60) return '#f59e0b';
+  return '#10b981';
 };
 </script>
 
