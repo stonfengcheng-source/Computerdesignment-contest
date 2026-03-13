@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+python-multipart
+torch
+transformers
+xgboost
+numpy
+hf-transfer
