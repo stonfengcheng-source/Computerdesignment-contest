@@ -7,6 +7,10 @@ from app.core.database import engine, Base, get_db
 from app.models.behavior_model import InconsistencyRecord
 from app.services.video_analysis_service import process_video_for_inconsistency
 
+# ！！！【关键一步】引入你的专属文本模块 ！！！
+# 确保你的 text_api.py 文件放在了 backend/app/ 文件夹下
+from app.text_api import router as text_router
+
 # 初始化数据库
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ！！！【关键二步】把你的专属模块插上主板 ！！！
+app.include_router(text_router, prefix="/api/v1/text", tags=["语义挖掘模块"])
 
 
 @app.post("/api/v1/analyze/video")

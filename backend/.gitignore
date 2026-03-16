@@ -16,3 +16,4 @@ data/weights/**/*.pth
 data/weights/**/*.safetensors
 data/weights/**/*.msgpack
 data/weights/**/*.h5
+data/weights/
