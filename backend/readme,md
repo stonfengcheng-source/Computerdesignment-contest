@@ -55,3 +55,40 @@ uvicorn main:app --reload
 接收：player_id (表单) 和 video_file (文件流)
 
 返回：包含 NLP 置信度、LSTM 重构误差、XGBoost 融合毒性分 (Toxicity Score) 的标准 JSON。
+
+语义挖掘模块 —— 部署说明 & 代码上传步骤
+
+一、模块说明
+本模块负责游戏黑话 / 毒性文本检测，输入一段聊天文本，输出 0~1 的毒性分数（toxicity_score）。
+分数可直接供其他模块（如言行不一检测）调用，便于整合。
+对外暴露的接口
+方法路径说明POST/api/v1/text/analyze_text输入文本，返回毒性分数
+请求参数（Form 表单）：
+chat_text: string   # 要检测的文本
+返回示例：
+json{
+  "status": "success",
+  "chat_text": "你这操作真下饭",
+  "toxicity_score": 0.8812
+}
+供其他模块直接调用的 Python 函数
+python# 在你的代码里这样引入即可，不需要走 HTTP 接口
+from app.ml_models.text_model import get_toxicity_score
+
+score = get_toxicity_score("你这操作真下饭")
+# 返回 float，范围 0.0 ~ 1.0
+
+二、文件结构（只涉及本模块的文件）
+backend/
+├── app/
+│   ├── text_api.py              # 本模块路由（独立文件，不改队友代码）
+│   └── ml_models/
+│       └── text_model.py        # 模型加载 & 算分函数
+├── data/
+│   └── weights/
+│       └── toxicity_model/      # ← 训练好的模型文件放这里（不上传 git）
+│           ├── config.json
+│           ├── pytorch_model.bin
+│           ├── tokenizer.json
+│           └── vocab.txt
+└── main.py                      # 队长维护，本模块只在此注册路由（两行）
