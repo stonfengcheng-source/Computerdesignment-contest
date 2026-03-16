@@ -79,14 +79,16 @@
 
 <script setup>
 import { ref } from 'vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 // 响应式数据
 const text = ref('')
 const result = ref(null)
 const detecting = ref(false)
 
-// 模拟检测函数
-const detect = () => {
+// ✅ 真实检测函数：调用后端 API
+const detect = async () => {
   if (!text.value.trim()) {
     ElMessage.warning('请输入要检测的文本内容')
     return
@@ -94,15 +96,30 @@ const detect = () => {
 
   detecting.value = true
 
-  // 模拟异步检测过程
-  setTimeout(() => {
+  try {
+    // 用 FormData 发送，和后端 Form(...) 对应
+    const formData = new FormData()
+    formData.append('chat_text', text.value)
+
+    const res = await axios.post('http://127.0.0.1:8000/api/v1/text/analyze_text', formData)
+
+    // 后端返回：{ status, chat_text, toxicity_score }
+    // toxicity_score 是 0~1 的小数，乘以 100 转成百分比整数给进度条用
+    const scorePercent = Math.round(res.data.toxicity_score * 100)
+
     result.value = {
-      toxicity: 85,
-      highlightedText: highlightSlang(text.value),
-      sentiment: '阴阳怪气'
+      toxicity: scorePercent,
+      highlightedText: highlightSlang(res.data.chat_text),
+      sentiment: scorePercent >= 50 ? '阴阳怪气' : '正常'
     }
+
+    ElMessage.success('AI 判定完成！')
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('后端连接失败，请确认后端服务已启动（端口 8000）')
+  } finally {
     detecting.value = false
-  }, 1000)
+  }
 }
 
 // 高亮黑话词

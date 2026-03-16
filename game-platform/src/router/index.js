@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import TextDetectionView from '@/views/TextDetectionView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,11 @@ const router = createRouter({
           path: '/behavior',
           name: 'behavior',
           component: () => import('../views/Behavior.vue'),
+        },
+        {
+          path: '/text-detection',
+          name: 'TextDetection',
+          component: TextDetectionView
         },
         {
           path: '/about',
