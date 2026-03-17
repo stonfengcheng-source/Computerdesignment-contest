@@ -1,0 +1,23 @@
+# backend/.gitignore
+
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略虚拟环境
+venv/
+env/
+.env
+
+# ！！！最关键：忽略大模型权重文件，防止撑爆 GitHub ！！！
+data/weights/**/*.bin
+data/weights/**/*.pth
+data/weights/**/*.safetensors
+data/weights/**/*.msgpack
+data/weights/**/*.h5
+<<<<<<< HEAD
+data/weights/
+=======
+backend/data/weights/
+>>>>>>> 45370fd (更新 readme 和 package-lock.json，忽略 weights 目录)
