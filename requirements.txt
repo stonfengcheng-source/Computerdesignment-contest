@@ -1,0 +1,27 @@
+# 核心基础库 (升级以适配 Python 3.12 内部 API 变更)
+numpy>=1.26.4
+pandas>=2.2.1
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+scikit-learn>=1.4.1.post1
+
+# 图计算与深度学习 (必须使用支持 3.12 的版本)
+torch>=2.2.1
+torch-geometric>=2.5.2
+networkx>=3.2.1
+matplotlib>=3.8.3
+
+# 环境兼容性修复 (强制锁定 urllib3 以兼容旧版 six 逻辑)
+six>=1.16.0
+urllib3>=1.26.18,<2.0.0
+
+
+
+fastapi>=0.110.0
+uvicorn>=0.27.1
+torch>=2.2.0
+torch-geometric>=2.5.0
+pandas>=2.2.0
+networkx>=3.2.1
+matplotlib>=3.8.3
+python-multipart>=0.0.9
