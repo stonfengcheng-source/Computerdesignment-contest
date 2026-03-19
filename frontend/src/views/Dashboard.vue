@@ -19,7 +19,7 @@
 
       <div class="demo-workspace">
         <div class="upload-area" :class="{ 'has-file': videoUrl }">
-          <input type="file" accept="video/*" @change="handleFileUpload" class="file-input" />
+          <input type="file" accept="video/*" @change="handleFileUpload" class="file-input" :disabled="isAnalyzing" />
 
           <div v-if="!videoUrl" class="upload-placeholder">
             <div class="upload-icon">📁</div>
@@ -29,8 +29,16 @@
 
           <div v-else class="video-preview">
             <video :src="videoUrl" controls style="background: #000; z-index: 5;" class="preview-player"></video>
-            <button class="btn-primary start-btn" @click="startAnalysis" :disabled="isAnalyzing">
-              {{ isAnalyzing ? '正在进行 AI 逐帧运算...' : '发送至后端并启动分析' }}
+
+            <div v-if="isAnalyzing" class="progress-overlay">
+              <div class="progress-text">多模态引擎超载运算中... {{ progress }}%</div>
+              <div class="progress-track">
+                <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+              </div>
+            </div>
+
+            <button v-else class="btn-primary start-btn" @click="startAnalysis">
+              发送至后端并启动分析
             </button>
           </div>
         </div>
@@ -98,6 +106,10 @@ const processLogs = ref([]);
 const analysisResult = ref(null);
 const logContainer = ref(null);
 
+// 进度条管理
+const progress = ref(0);
+let progressTimer = null;
+
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -105,6 +117,7 @@ const handleFileUpload = (event) => {
     videoUrl.value = URL.createObjectURL(file);
     processLogs.value = [];
     analysisResult.value = null;
+    progress.value = 0;
   }
 };
 
@@ -119,6 +132,19 @@ const addLog = (msg, type = "info") => {
   });
 };
 
+const simulateProgress = () => {
+  progress.value = 0;
+  progressTimer = setInterval(() => {
+    if (progress.value < 85) {
+      // 前期跑得快 (模拟上传和浅层特征提取)
+      progress.value += Math.floor(Math.random() * 5) + 2;
+    } else if (progress.value < 98) {
+      // 后期龟速 (模拟卡在深度学习模型推理阶段)
+      progress.value += 1;
+    }
+  }, 600);
+};
+
 const startAnalysis = async () => {
   if (isAnalyzing.value || !selectedFile.value) return;
 
@@ -126,42 +152,67 @@ const startAnalysis = async () => {
   processLogs.value = [];
   analysisResult.value = null;
 
-  addLog(">>> 开始封包视频数据...", "info");
+  simulateProgress(); // 启动视觉进度条
+
+  addLog(">>> [系统中枢] 收到指令，开始封包多模态数据...", "info");
 
   const formData = new FormData();
   formData.append('video_file', selectedFile.value);
   formData.append('player_id', 'admin_test_001');
 
   try {
-    addLog(`>>> 正在上传视频 (${selectedFile.value.name})，触发后端多模态推理与数据库写入...`, "process");
+    addLog(">>> [模块1] 启动 CV+NLP 引擎：向后端发送视频，提取特征流...", "process");
+    addLog(">>> [模块2] 唤醒 GAT 图神经网络：触发全网黑话溯源与拓扑更新...", "process");
 
-    const response = await fetch('/api/v1/analyze/video', {
+    const videoAnalysisPromise = fetch('/api/v1/analyze/video', {
       method: 'POST',
       body: formData,
     });
 
-    // 获取后端的真实报错文本（如果有的话）
-    let errorText = '';
-    if (!response.ok) {
-      errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    const graphAnalysisPromise = fetch('/api/slang/analyze', {
+      method: 'POST',
+    });
+
+    // 真实等待后端大模型计算完毕
+    const [videoResponse, graphResponse] = await Promise.all([
+      videoAnalysisPromise,
+      graphAnalysisPromise
+    ]);
+
+    if (!videoResponse.ok || !graphResponse.ok) {
+      throw new Error(`后端引擎崩溃！Video状态:${videoResponse.status}, Graph状态:${graphResponse.status}`);
     }
 
-    const data = await response.json();
+    const videoData = await videoResponse.json();
+    const graphData = await graphResponse.json();
 
-    if (data.status === "success") {
-      addLog(">>> 多模态融合计算完毕！", "success");
-      addLog(">>> 数据已持久化至 SQLite (InconsistencyRecord 表)！", "success");
-      analysisResult.value = data.result;
+    // 真实数据返回，瞬间拉满进度条
+    clearInterval(progressTimer);
+    progress.value = 100;
+
+    if (videoData.status === "success") {
+      addLog(">>> [模块1] OpenCV 帧运算与 BERT 推理完成！数据已入库 SQLite。", "success");
+      analysisResult.value = videoData.result;
     } else {
-      addLog(`后端业务异常：${data.message || '未知错误'}`, "warn");
+      addLog(`[模块1] 异常：${videoData.message}`, "warn");
     }
+
+    if (graphData.status === "success") {
+      addLog(">>> [模块2] GAT 溯源图谱已由后端重新计算并覆写！前往【风险溯源】即可查看最新污染拓扑。", "success");
+    } else {
+      addLog(`[模块2] 图谱训练异常：${graphData.message}`, "warn");
+    }
+
   } catch (error) {
     console.error(error);
-    addLog(`前端连接崩溃：${error.message}`, "warn");
-    addLog("请检查：1.后端 FastAPI 是否启动。 2.后端终端里是否有红色报错。", "warn");
+    clearInterval(progressTimer);
+    addLog(`前端总线异常：${error.message}`, "warn");
   } finally {
-    isAnalyzing.value = false;
+    // 延迟一小会儿隐藏进度条，让用户看清 100%
+    setTimeout(() => {
+      isAnalyzing.value = false;
+      progress.value = 0;
+    }, 800);
   }
 };
 
@@ -169,7 +220,6 @@ const formatScore = (val) => {
   return typeof val === 'number' ? val.toFixed(4) : val;
 };
 
-// --- 子模块导航数据 ---
 const rawModules = [
   { icon: '🕸️', title: '风险溯源拓扑', desc: '利用GAT图神经网络找出污染源与传播路径', route: '/trace' },
   { icon: '🛡️', title: '跨平台信用评级', desc: '异构数据打分，生成用户综合游戏信用画像', route: '/credit' },
@@ -182,6 +232,7 @@ const goToModule = (path) => { router.push(path); };
 </script>
 
 <style scoped>
+/* 保持你原本的全局样式不变，只追加了进度条的炫酷样式 */
 .dashboard-container { padding: 30px 40px; background-color: #f8fafc; min-height: 100vh; color: #334155; font-family: 'Inter', sans-serif;}
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
 .header-left h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; }
@@ -237,4 +288,46 @@ const goToModule = (path) => { router.push(path); };
 .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
 .btn-text { background: transparent; border: none; color: #38bdf8; cursor: pointer; padding: 0; font-size: 0.9rem; }
 .btn-text:hover { text-decoration: underline; }
+
+/* 🚀 进度条新增样式 */
+.progress-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 0 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 12;
+  backdrop-filter: blur(4px);
+}
+
+.progress-text {
+  color: #38bdf8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
 </style>

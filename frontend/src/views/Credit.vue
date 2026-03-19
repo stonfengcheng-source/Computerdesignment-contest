@@ -1,12 +1,11 @@
 <template>
   <div class="credit">
-    <!-- 搜索区域 -->
     <el-card shadow="hover" class="search-card">
       <el-form :inline="true" class="search-form">
-        <el-form-item label="玩家ID">
+        <el-form-item label="玩家游戏ID">
           <el-input
             v-model="playerId"
-            placeholder="请输入玩家ID"
+            placeholder="例如: admin_test_001"
             class="search-input"
             @keyup.enter="search"
           />
@@ -17,68 +16,67 @@
             @click="search"
             :loading="searching"
           >
-            搜索
+            全网深度检索
           </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 结果展示区域 -->
     <div v-if="creditData" class="results">
       <el-row :gutter="20">
-        <!-- 信用总分 -->
         <el-col :span="8">
           <el-card shadow="hover" class="score-card">
             <template #header>
-              <div class="card-header">信用总分</div>
+              <div class="card-header">跨平台综合信用画像</div>
             </template>
             <div class="score-display">
               <el-progress
-                type="circle"
-                :percentage="(creditData.totalScore / creditData.maxScore) * 100"
+                type="dashboard"
+                :percentage="creditData.totalScore"
                 :stroke-width="12"
                 :color="getScoreColor(creditData.totalScore)"
                 class="score-progress"
-              />
-              <div class="score-text">
-                <div class="current-score">{{ creditData.totalScore }}</div>
-                <div class="max-score">/ {{ creditData.maxScore }}</div>
-              </div>
+              >
+                <template #default="{ percentage }">
+                  <div class="score-text" :style="{ color: getScoreColor(percentage) }">
+                    <div class="current-score">{{ percentage }}</div>
+                    <div class="credit-level">{{ creditData.level }}</div>
+                  </div>
+                </template>
+              </el-progress>
+              <p class="score-desc">满分: 100分 (基于多平台违规率折算)</p>
             </div>
           </el-card>
         </el-col>
 
-        <!-- 分项得分柱状图 -->
         <el-col :span="8">
           <el-card shadow="hover">
             <template #header>
-              <div class="card-header">分项得分</div>
+              <div class="card-header">核心信用维度分析</div>
             </template>
-            <div ref="barChartRef" class="chart-container"></div>
+            <div ref="radarChartRef" class="chart-container"></div>
           </el-card>
         </el-col>
 
-        <!-- 信用变化折线图 -->
         <el-col :span="8">
           <el-card shadow="hover">
             <template #header>
-              <div class="card-header">近30天信用变化</div>
+              <div class="card-header">跨平台违规风险画像</div>
             </template>
-            <div ref="lineChartRef" class="chart-container"></div>
+            <div ref="platformChartRef" class="chart-container"></div>
           </el-card>
         </el-col>
       </el-row>
     </div>
 
-    <!-- 空状态 -->
     <div v-else class="empty-state">
-      <el-empty description="请输入玩家ID进行搜索" />
+      <el-empty description="输入跨平台通行证/游戏ID，获取全网信用评级" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 
@@ -88,14 +86,14 @@ const creditData = ref(null)
 const searching = ref(false)
 
 // 图表引用
-const barChartRef = ref(null)
-const lineChartRef = ref(null)
+const radarChartRef = ref(null)
+const platformChartRef = ref(null)
 
-let barChart = null
-let lineChart = null
+let radarChart = null
+let platformChart = null
 
-// 搜索函数
-const search = () => {
+// ====== 真实调用后端接口 ======
+const search = async () => {
   if (!playerId.value.trim()) {
     ElMessage.warning('请输入玩家ID')
     return
@@ -103,159 +101,126 @@ const search = () => {
 
   searching.value = true
 
-  // 模拟搜索过程
-  setTimeout(() => {
-    // Mock 数据
-    creditData.value = {
-      totalScore: 687,
-      maxScore: 1000,
-      categories: {
-        text: 250,
-        behavior: 300,
-        social: 137
-      },
-      trendData: {
-        dates: Array.from({length: 30}, (_, i) => {
-          const day = i + 1
-          return `02-${day.toString().padStart(2, '0')}`
-        }),
-        scores: Array.from({length: 30}, (_, i) => {
-          // 生成模拟的信用分数变化数据
-          const baseScore = 650
-          const variation = Math.sin(i * 0.2) * 50 + Math.random() * 30 - 15
-          return Math.max(400, Math.min(900, Math.floor(baseScore + variation)))
-        })
+  try {
+    // 真实请求后端 API (依赖 vite.config.js 的代理)
+    const response = await fetch(`/api/v1/credit/${playerId.value}`)
+    const json = await response.json()
+
+    if (response.ok && json.status === 'success') {
+      const data = json.data
+
+      // 映射后端返回的真实数据结构
+      creditData.value = {
+        totalScore: data.cross_platform_credit_score,
+        level: data.credit_level,
+        radar: data.radar_chart,            // {game_attitude, social_friendly, team_coop}
+        platforms: data.platform_details    // [{platform, afk_rate, report_rate, toxic_words_freq}, ...]
       }
+
+      ElMessage.success('信用数据聚合完毕！')
+
+      // 等待 DOM 更新后重新渲染图表
+      await nextTick()
+      initCharts()
+    } else {
+      ElMessage.error(`查询失败: ${json.message || '未知错误'}`)
     }
-
-    // 初始化图表
-    initCharts()
-
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(`网络或服务器异常: ${error.message}`)
+  } finally {
     searching.value = false
-  }, 1000)
+  }
 }
 
-// 获取分数颜色
+// ====== 分数颜色动态计算 ======
 const getScoreColor = (score) => {
-  const percentage = score / 1000
-  if (percentage >= 0.8) return '#67C23A' // 绿色
-  if (percentage >= 0.6) return '#E6A23C' // 橙色
-  if (percentage >= 0.4) return '#FFC107' // 黄色
-  return '#F56C6C' // 红色
+  if (score >= 85) return '#67C23A' // 优秀 绿色
+  if (score >= 70) return '#E6A23C' // 良好 橙色
+  return '#F56C6C' // 极差 红色
 }
 
-// 初始化柱状图
-const initBarChart = () => {
-  if (!barChartRef.value || !creditData.value) return
+// ====== 初始化信用维度柱状图 ======
+const initRadarChart = () => {
+  if (!radarChartRef.value || !creditData.value) return
 
-  barChart = echarts.init(barChartRef.value)
+  if (radarChart) radarChart.dispose() // 避免重复渲染导致内存泄漏
+  radarChart = echarts.init(radarChartRef.value)
+
   const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      data: ['文本得分', '行为得分', '社交得分'],
-      textStyle: {
-        color: '#334155'
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: ['信用分项'],
-      axisLabel: {
-        color: '#334155'
-      }
-    },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'value', max: 100 },
     yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: '#334155'
-      }
+      type: 'category',
+      data: ['游戏态度', '社交友好', '团队协作'],
+      axisLabel: { fontWeight: 'bold' }
     },
     series: [
       {
-        name: '文本得分',
+        name: '维度得分',
         type: 'bar',
-        stack: 'total',
-        data: [creditData.value.categories.text],
-        itemStyle: {
-          color: '#409EFF'
-        }
-      },
-      {
-        name: '行为得分',
-        type: 'bar',
-        stack: 'total',
-        data: [creditData.value.categories.behavior],
-        itemStyle: {
-          color: '#67C23A'
-        }
-      },
-      {
-        name: '社交得分',
-        type: 'bar',
-        stack: 'total',
-        data: [creditData.value.categories.social],
-        itemStyle: {
-          color: '#E6A23C'
-        }
+        barWidth: '50%',
+        data: [
+          { value: creditData.value.radar.game_attitude, itemStyle: { color: '#409EFF' } },
+          { value: creditData.value.radar.social_friendly, itemStyle: { color: '#67C23A' } },
+          { value: creditData.value.radar.team_coop, itemStyle: { color: '#E6A23C' } }
+        ],
+        label: { show: true, position: 'right' }
       }
     ]
   }
-  barChart.setOption(option)
+  radarChart.setOption(option)
 }
 
-// 初始化折线图
-const initLineChart = () => {
-  if (!lineChartRef.value || !creditData.value) return
+// ====== 初始化多平台违规对比图 ======
+const initPlatformChart = () => {
+  if (!platformChartRef.value || !creditData.value) return
 
-  lineChart = echarts.init(lineChartRef.value)
+  if (platformChart) platformChart.dispose()
+  platformChart = echarts.init(platformChartRef.value)
+
+  // 从后端数据中解析出 X 轴和各系列数据 (将概率 0.15 转换为 15%)
+  const platforms = creditData.value.platforms.map(p => p.platform)
+  const afkData = creditData.value.platforms.map(p => (p.afk_rate * 100).toFixed(1))
+  const reportData = creditData.value.platforms.map(p => (p.report_rate * 100).toFixed(1))
+  const toxicData = creditData.value.platforms.map(p => (p.toxic_words_freq * 100).toFixed(1))
+
   const option = {
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      valueFormatter: (value) => value + '%' // 提示框带百分号
     },
+    legend: { data: ['挂机率', '被举报率', '言语违规率'], bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: creditData.value.trendData.dates,
-      axisLabel: {
-        color: '#334155',
-        rotate: 45
-      }
+      data: platforms,
+      axisLabel: { fontWeight: 'bold' }
     },
     yAxis: {
       type: 'value',
-      axisLabel: {
-        color: '#334155'
-      }
+      axisLabel: { formatter: '{value} %' }
     },
-    series: [{
-      data: creditData.value.trendData.scores,
-      type: 'line',
-      smooth: true,
-      itemStyle: {
-        color: '#409EFF'
-      },
-      areaStyle: {
-        color: 'rgba(64, 158, 255, 0.1)'
-      }
-    }]
+    series: [
+      { name: '挂机率', type: 'bar', data: afkData, itemStyle: { color: '#909399' } },
+      { name: '被举报率', type: 'bar', data: reportData, itemStyle: { color: '#F56C6C' } },
+      { name: '言语违规率', type: 'bar', data: toxicData, itemStyle: { color: '#E6A23C' } }
+    ]
   }
-  lineChart.setOption(option)
+  platformChart.setOption(option)
 }
 
-// 初始化所有图表
 const initCharts = () => {
-  initBarChart()
-  initLineChart()
+  initRadarChart()
+  initPlatformChart()
 }
 
-// 窗口大小改变时重新调整图表大小
+// 响应式调整
 const handleResize = () => {
-  if (barChart) barChart.resize()
-  if (lineChart) lineChart.resize()
+  if (radarChart) radarChart.resize()
+  if (platformChart) platformChart.resize()
 }
 
 onMounted(() => {
@@ -264,8 +229,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  if (barChart) barChart.dispose()
-  if (lineChart) lineChart.dispose()
+  if (radarChart) radarChart.dispose()
+  if (platformChart) platformChart.dispose()
 })
 </script>
 
@@ -280,25 +245,17 @@ onUnmounted(() => {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   margin-bottom: 20px;
+  border-radius: 12px;
 }
 
 .search-form {
   display: flex;
   justify-content: center;
+  align-items: flex-end; /* 让按钮和输入框底对齐 */
 }
 
 .search-input {
-  width: 300px;
-}
-
-.search-input :deep(.el-input__inner) {
-  background-color: #e2e8f0;
-  border: 1px solid #cbd5e1;
-  color: #334155;
-}
-
-.search-input :deep(.el-input__inner::placeholder) {
-  color: #94a3b8;
+  width: 350px;
 }
 
 .results {
@@ -309,38 +266,48 @@ onUnmounted(() => {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   text-align: center;
+  height: 100%;
 }
 
 .card-header {
   color: #334155;
-  font-weight: 500;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .score-display {
-  position: relative;
-  display: inline-block;
-}
-
-.score-progress {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
 }
 
 .score-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #409EFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .current-score {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.max-score {
-  font-size: 12px;
+.credit-level {
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+  padding: 2px 12px;
+  border-radius: 12px;
+  background-color: rgba(0,0,0,0.05);
+}
+
+.score-desc {
   color: #94a3b8;
+  font-size: 0.9rem;
+  margin-top: -10px;
 }
 
 .chart-container {
@@ -350,9 +317,5 @@ onUnmounted(() => {
 
 .empty-state {
   margin-top: 100px;
-}
-
-:deep(.el-empty__description p) {
-  color: #94a3b8;
 }
 </style>
