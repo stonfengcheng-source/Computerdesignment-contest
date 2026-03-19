@@ -1,19 +1,27 @@
-# IDEs & Editors
-.idea/
-.vscode/
+# 忽略 AI 模型权重文件 (太大了，不能传 Git)
+backend/data/weights/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.h5
 
-# Python & Backend
-__pycache__/
-*.py[cod]
-*.db
-venv/
-.env
+# 忽略用户上传的视频和多媒体测试文件
+backend/data/uploads/
+*.mp4
+*.avi
+*.webm
 
-# Node & Frontend
+# 忽略本地生成的 SQLite 数据库 (避免不同设备的库冲突)
+backend/data/*.db
+backend/data/*.sqlite3
+
+# 忽略虚拟环境 (如果你还没忽略的话)
+.venv/
+
+# 忽略前端依赖包
 node_modules/
-dist/
+frontend/node_modules/
 
-# Project Specific Data & Logs
-data/raw_chats.csv
-output/
-*.log
+# 忽略 AI 训练过程中的中间权重检查点
+results/
