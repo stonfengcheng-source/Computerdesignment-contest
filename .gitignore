@@ -25,3 +25,5 @@ frontend/node_modules/
 
 # 忽略 AI 训练过程中的中间权重检查点
 results/
+
+.idea/
