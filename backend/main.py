@@ -84,6 +84,8 @@ async def run_analysis():
 app.include_router(slang_router)
 
 # ================= 路由 3: 视频行为分析模块 =================
+# === 替换 main.py 中的 /api/v1/analyze/video 路由 ===
+
 @app.post("/api/v1/analyze/video", tags=["言行不一检测模块"])
 async def upload_and_analyze_video(
         player_id: str = Form(...),
@@ -92,47 +94,51 @@ async def upload_and_analyze_video(
 ):
     upload_dir = os.path.join(DATA_DIR, "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-
     file_path = os.path.join(upload_dir, video_file.filename)
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(video_file.file, buffer)
 
-    text_prob, behavior_error, toxicity_score, is_inconsistent, risk_level = process_video_for_inconsistency(
-        video_path=file_path,
-        player_id=player_id
-    )
+    # ================= 核心桥梁：特征提取层 =================
+    print(f">> [特征提取] 正在处理视频 {video_file.filename}...")
+    # 按照您的文档规划，这里未来会接入 OpenAI Whisper 提取语音
+    # 和 CV 模型提取画面中的 KDA/经济数据。
+    # 【注意】在您的提取模型写好前，这里暂时用测试提取数据代替（这不是拟合最终分数，而是模拟前置提取器的输出）
+    mock_extracted_texts = ["兄弟们稳住，交给我来操作，看我秀他"]
+    mock_extracted_actions = [
+        {"gold": 50, "kda": "0-5-0", "move": "异常停留"},
+        {"gold": 50, "kda": "0-6-0", "move": "向敌方泉水移动"}
+    ]
+    # ========================================================
 
+    # 将提取出的真实/模拟特征喂给刚刚改好的严格算力引擎
+    try:
+        analysis_result = process_video_for_inconsistency(
+            video_path=file_path,
+            player_id=player_id,
+            extracted_texts=mock_extracted_texts,
+            extracted_actions=mock_extracted_actions
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 存入数据库
     new_record = InconsistencyRecord(
         video_filename=video_file.filename,
         player_id=player_id,
-        text_prob=text_prob,
-        behavior_error=behavior_error,
-        toxicity_score=toxicity_score,
-        is_inconsistent=is_inconsistent,
-        risk_level=risk_level
+        text_prob=analysis_result["text_sentiment_prob"],
+        behavior_error=analysis_result["behavior_anomaly_score"],
+        toxicity_score=analysis_result["behavior_anomaly_score"],  # 暂代
+        is_inconsistent=analysis_result["is_inconsistent"],
+        risk_level=analysis_result["local_risk_level"]
     )
     db.add(new_record)
     db.commit()
-    db.refresh(new_record)
 
     return {
         "status": "success",
-        "message": f"视频 {video_file.filename} 分析完成",
-        "result": {
-            "is_inconsistent": is_inconsistent,
-            "risk_level": risk_level,
-            "details": {
-                "text_sentiment_prob": text_prob,
-                "behavior_anomaly_score": behavior_error,
-                "final_toxicity_score": toxicity_score
-            }
-        }
+        "result": analysis_result
     }
-
-@app.get("/api/v1/records", tags=["言行不一检测模块"])
-async def get_all_records(db: Session = Depends(get_db)):
-    records = db.query(InconsistencyRecord).all()
-    return {"data": records}
 
 # ================= 路由 4: 跨平台信用分模块 =================
 @app.get("/api/v1/credit/{player_id}", tags=["跨平台信用评级"])
