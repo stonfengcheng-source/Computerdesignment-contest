@@ -1,9 +1,25 @@
-fastapi
-uvicorn
+# === 核心框架与Web API ===
+fastapi>=0.110.0
+uvicorn>=0.27.1
+python-multipart>=0.0.9
 sqlalchemy
-python-multipart
-torch
-transformers
+requests>=2.31.0
+urllib3>=1.26.18,<2.0.0
+six>=1.16.0
+
+# === 数据处理与机器学习 ===
+numpy>=1.26.4
+pandas>=2.2.1
+scikit-learn>=1.4.1.post1
 xgboost
-numpy
+
+# === 深度学习与图计算 ===
+torch>=2.2.1
+torch-geometric>=2.5.2
+networkx>=3.2.1
+matplotlib>=3.8.3
+transformers
 hf-transfer
+
+# === 爬虫及其他 ===
+beautifulsoup4>=4.12.3

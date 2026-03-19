@@ -1,6 +1,19 @@
-venv/
-__pycache__/
+# IDEs & Editors
+.idea/
 .vscode/
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*.db
+venv/
+.env
+
+# Node & Frontend
+node_modules/
+dist/
+
+# Project Specific Data & Logs
 data/raw_chats.csv
 output/
 *.log
