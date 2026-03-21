@@ -38,6 +38,8 @@ class CrawledDataRecord(Base):
 
 
 # 3. 💡 新增：信用报告存储表 (用于存储生成的评级报告)
+# backend/app/models/behavior_model.py
+
 class CreditReportRecord(Base):
     __tablename__ = "credit_report_records"
 
@@ -53,5 +55,8 @@ class CreditReportRecord(Base):
     # 最终计算出的信用分与判决书
     final_credit_score = Column(Float)
     summary = Column(Text)
+
+    # --- 新增：存储报告文件的路径 ---
+    report_path = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
