@@ -41,14 +41,17 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Graph } from '@antv/g6'
-// 确保你的 mock 数据路径正确
-import { nodes, edges } from '@/mock/trace.js'
+// 移除原有的 mock 数据导入！
 
 const graphContainer = ref(null)
 const drawerVisible = ref(false)
 const selectedNode = ref(null)
 let graph = null
-const baseNodeMap = new Map(nodes.map((node) => [node.id, node]))
+
+// 用于缓存所有的边和节点，以便进行深度遍历计算影响力
+let globalNodes = []
+let globalEdges = []
+const baseNodeMap = new Map()
 
 // 风险等级映射
 const getRiskLevel = (color) => {
@@ -72,16 +75,14 @@ const calculateInfluence = (startNodeId) => {
 
     if (!visited.has(currentId)) {
       visited.add(currentId);
-      // 不计算源节点本身
       if (currentId !== startNodeId) {
         influenceCount++;
       }
 
-      // 寻找所有由当前节点向外辐射的目标节点压入栈中
       let i = 0;
-      while (i < edges.length) {
-        if (edges[i].source === currentId && !visited.has(edges[i].target)) {
-          stack.push(edges[i].target);
+      while (i < globalEdges.length) {
+        if (globalEdges[i].source === currentId && !visited.has(globalEdges[i].target)) {
+          stack.push(globalEdges[i].target);
         }
         i++;
       }
@@ -124,87 +125,102 @@ const handleNodeClick = (evt) => {
     openNodeDrawer(evt.item.getModel())
     return
   }
-  const directData = evt.data?.id ? evt.data : evt.data?.data
-  if (directData?.id) {
-    openNodeDrawer(directData)
-    return
-  }
   const targetId = evt.target?.id || evt.itemId || evt.id
   if (targetId && baseNodeMap.has(targetId)) {
     openNodeDrawer(baseNodeMap.get(targetId))
   }
 }
 
-const initGraph = () => {
+// ================= 新增：动态请求后端图谱数据 =================
+const fetchAndInitGraph = async () => {
   const container = graphContainer.value
   if (!container) return
 
-  const width = container.offsetWidth
-  const height = container.offsetHeight || 600
+  try {
+    // 调用后端接口获取 GAT 生成的 GEXF 拓扑数据
+    const res = await fetch('http://127.0.0.1:8000/api/slang/graph')
+    const rawData = await res.json()
 
-  const graphData = {
-    nodes: nodes.map((node) => ({
-      id: node.id,
-      label: node.label,
-      size: node.size,
-      style: {
-        fill: node.color,
-        stroke: '#ffffff', // 节点边框改为纯白，融入亮色背景
-        lineWidth: 3,
-        shadowColor: 'rgba(0,0,0,0.1)',
-        shadowBlur: 10
-      },
-    })),
-    edges: edges.map((edge) => ({
-      source: edge.source,
-      target: edge.target,
-    })),
-  }
+    // 格式化后端 Echarts 数据到 AntV G6 格式
+    globalNodes = rawData.nodes || []
+    // Echarts中边通常用 links，兼容处理
+    globalEdges = rawData.links || rawData.edges || []
 
-  graph = new Graph({
-    container,
-    width,
-    height,
-    data: graphData,
-    layout: {
-      type: 'd3-force',
-      preventOverlap: true,
-      link: { distance: 150 },
-      manyBody: { strength: -300 }, // 增强排斥力，让拓扑图更舒展
-      collide: { radius: (d) => (d.size || 24) / 2 + 10 },
-    },
-    behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
-    node: {
-      style: {
-        size: (d) => d.size || 30,
-        labelText: (d) => d.label,
-        labelFill: '#334155', // 亮色模式下的深灰色字体
-        labelFontSize: 12,
-        labelFontWeight: 'bold',
-        stroke: '#fff',
-        lineWidth: 2,
-        fill: (d) => d.style?.fill || '#67C23A',
-      },
-    },
-    edge: {
-      style: {
-        stroke: '#cbd5e1', // 浅蓝色连线
-        lineWidth: 1.5,
-        endArrow: {
-          path: 'M 0,0 L 8,4 L 8,-4 Z',
-          fill: '#cbd5e1',
+    const formattedNodes = globalNodes.map(node => {
+      // 存储到 Map
+      baseNodeMap.set(String(node.id), { ...node, color: node.itemStyle?.color });
+
+      return {
+        id: String(node.id),
+        label: node.name || String(node.id),
+        size: node.symbolSize || 30,
+        style: {
+          fill: node.itemStyle?.color || '#67C23A',
+          stroke: '#ffffff',
+          lineWidth: 3,
+          shadowColor: 'rgba(0,0,0,0.1)',
+          shadowBlur: 10
         }
-      },
-    },
-  })
+      }
+    })
 
-  graph.render()
-  graph.on('node:click', handleNodeClick)
-  window.addEventListener('resize', handleResize)
+    const formattedEdges = globalEdges.map(edge => ({
+      source: String(edge.source),
+      target: String(edge.target),
+    }))
+
+    const width = container.offsetWidth
+    const height = container.offsetHeight || 600
+
+    graph = new Graph({
+      container,
+      width,
+      height,
+      data: { nodes: formattedNodes, edges: formattedEdges },
+      layout: {
+        type: 'd3-force',
+        preventOverlap: true,
+        link: { distance: 150 },
+        manyBody: { strength: -300 }, // 排斥力
+        collide: { radius: (d) => (d.size || 24) / 2 + 10 },
+      },
+      behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
+      node: {
+        style: {
+          size: (d) => d.size || 30,
+          labelText: (d) => d.label,
+          labelFill: '#334155',
+          labelFontSize: 12,
+          labelFontWeight: 'bold',
+          stroke: '#fff',
+          lineWidth: 2,
+          fill: (d) => d.style?.fill || '#67C23A',
+        },
+      },
+      edge: {
+        style: {
+          stroke: '#cbd5e1',
+          lineWidth: 1.5,
+          endArrow: {
+            path: 'M 0,0 L 8,4 L 8,-4 Z',
+            fill: '#cbd5e1',
+          }
+        },
+      },
+    })
+
+    graph.render()
+    graph.on('node:click', handleNodeClick)
+    window.addEventListener('resize', handleResize)
+
+  } catch (error) {
+    console.error("加载图谱数据失败，请确保后端 8000 端口及模型已启动:", error)
+  }
 }
 
 onMounted(() => {
-  initGraph()
+  // 修改这里：从原来的 initGraph() 改为异步获取渲染
+  fetchAndInitGraph()
 })
 
 onUnmounted(() => {

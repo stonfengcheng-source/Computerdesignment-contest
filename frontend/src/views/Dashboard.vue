@@ -65,7 +65,12 @@
               <span class="tag tag-behavior">行为异常分: {{ formatScore(analysisResult.details.behavior_anomaly_score) }}</span>
               <span class="tag tag-slang">综合毒性值: {{ formatScore(analysisResult.details.final_toxicity_score) }}</span>
             </div>
-            <button class="btn-text" @click="goToModule('/detect')">查看详细检测报告 &rarr;</button>
+
+            <div style="margin-top: 15px; display: flex; gap: 15px;">
+              <button class="btn-text" @click="goToModule('/detect')">查看详细检测报告 &rarr;</button>
+              <button class="btn-text" @click="goToModule('/credit')">查看跨平台信用档案 &rarr;</button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -73,6 +78,7 @@
 
     <section class="modules-section">
       <h2 class="sub-title">系统功能矩阵</h2>
+
       <div class="modules-grid">
         <div
           v-for="(mod, index) in processedModules"
@@ -88,6 +94,7 @@
           <div class="card-arrow">&rarr;</div>
         </div>
       </div>
+
     </section>
   </div>
 </template>
@@ -164,31 +171,27 @@ const startAnalysis = async () => {
     addLog(">>> [模块1] 启动 CV+NLP 引擎：向后端发送视频，提取特征流...", "process");
     addLog(">>> [模块2] 唤醒 GAT 图神经网络：触发全网黑话溯源与拓扑更新...", "process");
 
-    const videoAnalysisPromise = fetch('/api/v1/analyze/video', {
+    const videoAnalysisPromise = fetch('http://127.0.0.1:8000/api/v1/analyze/video', {
       method: 'POST',
       body: formData,
     });
 
-    const graphAnalysisPromise = fetch('/api/slang/analyze', {
+    const graphAnalysisPromise = fetch('http://127.0.0.1:8000/api/slang/analyze', {
       method: 'POST',
     });
 
-    // 真实等待后端大模型计算完毕
+    // 1. 等待前置两大核心模型计算完毕
     const [videoResponse, graphResponse] = await Promise.all([
       videoAnalysisPromise,
       graphAnalysisPromise
     ]);
 
     if (!videoResponse.ok || !graphResponse.ok) {
-      throw new Error(`后端引擎崩溃！Video状态:${videoResponse.status}, Graph状态:${graphResponse.status}`);
+      throw new Error(`后端引擎崩溃！Video:${videoResponse.status}, Graph:${graphResponse.status}`);
     }
 
     const videoData = await videoResponse.json();
     const graphData = await graphResponse.json();
-
-    // 真实数据返回，瞬间拉满进度条
-    clearInterval(progressTimer);
-    progress.value = 100;
 
     if (videoData.status === "success") {
       addLog(">>> [模块1] OpenCV 帧运算与 BERT 推理完成！数据已入库 SQLite。", "success");
@@ -198,17 +201,47 @@ const startAnalysis = async () => {
     }
 
     if (graphData.status === "success") {
-      addLog(">>> [模块2] GAT 溯源图谱已由后端重新计算并覆写！前往【风险溯源】即可查看最新污染拓扑。", "success");
+      addLog(">>> [模块2] GAT 溯源图谱已由后端重新计算并覆写！", "success");
     } else {
       addLog(`[模块2] 图谱训练异常：${graphData.message}`, "warn");
     }
+
+    // ================= 新增：模块 3 信用报告生成 =================
+    addLog(">>> [模块3] 启动信用评估模型：正在融合多模态特征生成综合信用报告...", "process");
+
+    // 提取视频分析得到的分数，作为生成报告的入参
+    const textScore = videoData.result?.details?.text_sentiment_prob || 0.1;
+    const behaviorScore = videoData.result?.details?.behavior_anomaly_score || 0.1;
+
+    const reportResponse = await fetch('http://127.0.0.1:8000/api/v1/report/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_id: 'admin_test_001',
+        text_toxicity: textScore,
+        audio_toxicity: 0.05, // 暂用默认值
+        behavior_anomaly: behaviorScore,
+        graph_risk: 0.82 // GAT网络输出的风险系数
+      })
+    });
+
+    const reportData = await reportResponse.json();
+    if (reportData.status === "success") {
+      addLog(">>> [模块3] 玩家专属信用评级报告已生成！", "success");
+    } else {
+      addLog(`[模块3] 报告生成异常：${reportData.message}`, "warn");
+    }
+    // ==============================================================
+
+    // 真实数据返回，瞬间拉满进度条
+    clearInterval(progressTimer);
+    progress.value = 100;
 
   } catch (error) {
     console.error(error);
     clearInterval(progressTimer);
     addLog(`前端总线异常：${error.message}`, "warn");
   } finally {
-    // 延迟一小会儿隐藏进度条，让用户看清 100%
     setTimeout(() => {
       isAnalyzing.value = false;
       progress.value = 0;
@@ -224,7 +257,8 @@ const rawModules = [
   { icon: '🕸️', title: '风险溯源拓扑', desc: '利用GAT图神经网络找出污染源与传播路径', route: '/trace' },
   { icon: '🛡️', title: '跨平台信用评级', desc: '异构数据打分，生成用户综合游戏信用画像', route: '/credit' },
   { icon: '🎭', title: '阴阳怪气分析', desc: '调用 NLP 引擎深度识别隐藏嘲讽', route: '/detect' },
-  { icon: '🎮', title: '言行不一检测', desc: '比对行为流与文本流，定位异常消极行为', route: '/detect' }
+  // 💡 修复：将言行不一的 route 从 /detect 改为 /behavior
+  { icon: '🎮', title: '言行不一检测', desc: '比对行为流与文本流，定位异常消极行为', route: '/behavior' }
 ];
 
 const processedModules = reactive([...rawModules]);

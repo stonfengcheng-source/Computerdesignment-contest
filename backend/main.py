@@ -7,6 +7,13 @@ import json
 import traceback
 import asyncio
 import uuid
+import sys  # <-- 新增导入 sys
+
+from app.models.behavior_model import InconsistencyRecord, CrawledDataRecord, CreditReportRecord
+
+# ================= 修复 Windows 下 Playwright 的 NotImplementedError =================
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from typing import List
 
 from fastapi import FastAPI, Depends, UploadFile, File, Form, HTTPException, APIRouter
@@ -268,11 +275,31 @@ async def get_all_records(db: Session = Depends(get_db)):
 
 # ================= 路由 5: 跨平台信用分与报告模块 =================
 @app.get("/api/v1/credit/{player_id}", tags=["跨平台信用评级"])
-async def get_player_credit(player_id: str):
+async def get_player_credit(player_id: str, db: Session = Depends(get_db)):
     try:
+        # 💡 核心逻辑：从数据库中查询该玩家最新生成的信用报告
+        record = db.query(CreditReportRecord).filter(CreditReportRecord.player_id == player_id).order_by(
+            CreditReportRecord.id.desc()).first()
+
+        if record:
+            # 如果数据库里有，直接格式化返回给前端大屏展示
+            return {
+                "status": "success",
+                "data": {
+                    "final_credit_score": record.final_credit_score,
+                    "summary": record.summary,
+                    "text_risk_level": int(record.text_toxicity * 100),
+                    "audio_risk_level": int(record.audio_toxicity * 100),
+                    "behavior_risk_level": int(record.behavior_anomaly * 100),
+                    "graph_risk_level": int(record.graph_risk * 100)
+                }
+            }
+
+        # 如果数据库没有，则调用原来的离线生成兜底
         result = await generate_cross_platform_credit(player_id)
         return {"status": "success", "data": result}
     except Exception as e:
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 
@@ -285,8 +312,9 @@ class ReportRequest(BaseModel):
 
 
 @app.post("/api/v1/report/generate", tags=["多模态综合报告生成"])
-async def generate_report(req: ReportRequest):
+async def generate_report(req: ReportRequest, db: Session = Depends(get_db)):
     try:
+        # 1. 调用原有的服务层逻辑生成诊断文本 (如果 generate_comprehensive_report 返回的是文本字典)
         result = generate_comprehensive_report(
             player_id=req.player_id,
             text_toxicity=req.text_toxicity,
@@ -294,8 +322,33 @@ async def generate_report(req: ReportRequest):
             behavior_anomaly=req.behavior_anomaly,
             graph_risk=req.graph_risk
         )
-        return {"status": "success", "data": result}
+
+        # 2. 计算最终的综合信用分 (满分100，扣减各项风险)
+        # 这里权重可以根据你们答辩时的说法自行调整
+        penalty = (req.text_toxicity * 15) + (req.behavior_anomaly * 25) + (req.graph_risk * 20)
+        final_score = max(0, min(100, int(100 - penalty)))
+
+        # 提取判决书文本
+        summary_text = result.get("summary", "系统检测到玩家行为异常") if isinstance(result, dict) else str(result)
+
+        # 3. 💡 将计算好的完整数据存入刚新建的数据库表中
+        new_report = CreditReportRecord(
+            player_id=req.player_id,
+            text_toxicity=req.text_toxicity,
+            audio_toxicity=req.audio_toxicity,
+            behavior_anomaly=req.behavior_anomaly,
+            graph_risk=req.graph_risk,
+            final_credit_score=final_score,
+            summary=summary_text
+        )
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+
+        return {"status": "success", "message": "报告已生成并存入数据库", "record_id": new_report.id}
     except Exception as e:
+        traceback.print_exc()
+        db.rollback()
         return {"status": "error", "message": str(e)}
 
 
@@ -304,4 +357,5 @@ if __name__ == "__main__":
     import uvicorn
 
     print("🚀 深蓝卫士核心引擎启动中...")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # 加上 loop="none" 阻止 Uvicorn 内部重置 Windows 事件循环策略
+    uvicorn.run(app, host="127.0.0.1", port=8000, loop="none")
