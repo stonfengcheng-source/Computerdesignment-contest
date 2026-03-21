@@ -39,7 +39,7 @@
             :row-class-name="tableRowClassName"
             @row-click="selectRow"
           >
-            <el-table-column prop="id" label="ID" width="120" />
+            <el-table-column prop="id" label="ID" width="100" />
             <el-table-column prop="text" label="文本内容" min-width="200">
               <template #default="scope">
                 <div class="text-content" :title="scope.row.text">{{ scope.row.text }}</div>
@@ -150,7 +150,6 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
-// 修改点 2：移除 keyword 绑定属性
 const crawlForm = ref({
   platform: 'tieba' // 默认贴吧游戏区
 })
@@ -180,7 +179,7 @@ const fetchTableData = async () => {
   }
 }
 
-// === 修改点 3：重构执行逻辑，去除了 keyword 判定 ===
+// === 执行爬虫逻辑 ===
 const executeCrawl = async () => {
   isCrawling.value = true
   crawlProgress.value = 0
@@ -188,7 +187,6 @@ const executeCrawl = async () => {
 
   try {
     const formData = new FormData()
-    // 仅传递 platform 给后端
     formData.append('platform', crawlForm.value.platform)
 
     // 1. 下发任务，拿到 task_id
@@ -208,7 +206,7 @@ const executeCrawl = async () => {
           clearInterval(pollingTimer)
           isCrawling.value = false
           ElMessage.success('语料抓取完毕并已完成自动相似度打标！')
-          await fetchTableData() // 自动刷新列表
+          await fetchTableData() // 自动刷新列表，显示最新入库的数据
           // 3秒后隐藏进度条
           setTimeout(() => { crawlProgress.value = 0 }, 3000)
         } else if (status === 'failed') {
@@ -229,7 +227,7 @@ const executeCrawl = async () => {
   }
 }
 
-// === 分页及标注逻辑保持不变 ===
+// === 分页及标注逻辑 ===
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = computed(() => tableData.value.length)
@@ -276,11 +274,24 @@ const handleCurrentChange = (val) => {
   currentPage.value = val
 }
 
-const submitAnnotation = () => {
+// === 核心修改：将标注结果提交至后端 ===
+const submitAnnotation = async () => {
   if (!selectedItem.value) return ElMessage.warning('请先选择要标注的数据')
-  selectedItem.value.annotated = true
-  ElMessage.success('数据已成功打标！特征已反馈至多模态大模型')
-  selectedItem.value = null
+
+  try {
+    // 调用后端新增加的 annotate 接口
+    await axios.post(`http://127.0.0.1:8000/api/v1/data/annotate/${selectedItem.value.id}`, annotation.value)
+
+    // 提交成功后，更新本地状态，表格这行会变绿
+    selectedItem.value.annotated = true
+    ElMessage.success('数据已成功打标！特征已持久化入库')
+
+    // 清空右侧表单选择，提示用户继续下一条
+    selectedItem.value = null
+  } catch (error) {
+    ElMessage.error('标注提交失败，请检查后端引擎状态')
+    console.error(error)
+  }
 }
 
 onMounted(() => {
@@ -289,7 +300,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 样式保持原样 */
 .label {
   padding: 20px;
   background-color: #f8fafc;
@@ -299,7 +309,7 @@ onMounted(() => {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   color: #334155;
-  height: calc(100vh - 80px); /* 稍微拉长高度适应进度条 */
+  height: calc(100vh - 80px);
   overflow-y: auto;
 }
 .card-header {
