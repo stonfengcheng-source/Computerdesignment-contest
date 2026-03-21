@@ -22,4 +22,6 @@ data/weights/
 backend/data/weights/
 >>>>>>> 45370fd (更新 readme 和 package-lock.json，忽略 weights 目录)
 
-backend/data/raw_chats.csv
+data/raw_chats.csv
+data/datasets/
+
