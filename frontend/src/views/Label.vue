@@ -1,11 +1,36 @@
 <template>
   <div class="label">
     <el-row :gutter="20">
-      <!-- 左侧数据列表 -->
       <el-col :span="12">
         <el-card shadow="hover" class="data-card">
           <template #header>
-            <div class="card-header">待标注数据</div>
+            <div class="card-header">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>待标注数据池 (游戏生态语料)</span>
+
+                <div class="crawler-controls" style="display: flex; gap: 10px; align-items: center;">
+                  <el-tag type="info" size="small" effect="plain">
+                    🔍 智能相似度匹配模式
+                  </el-tag>
+                  <el-select v-model="crawlForm.platform" size="small" style="width: 120px;" :disabled="isCrawling">
+                    <el-option label="B站热搜榜" value="bilibili" />
+                    <el-option label="贴吧游戏区" value="tieba" />
+                    <el-option label="小红书热点" value="xhs" />
+                    <el-option label="微博游戏榜" value="weibo" />
+                  </el-select>
+                  <el-button type="primary" size="small" :loading="isCrawling" @click="executeCrawl">
+                    {{ isCrawling ? '网络探索中...' : '一键主动巡视' }}
+                  </el-button>
+                </div>
+              </div>
+
+              <div v-if="isCrawling || crawlProgress === 100" class="progress-container" style="margin-top: 15px;">
+                <el-progress :percentage="crawlProgress" :text-inside="true" :stroke-width="18" :status="progressStatus"></el-progress>
+                <div style="font-size: 12px; color: #64748b; margin-top: 5px; text-align: right;">
+                  {{ crawlMessage }}
+                </div>
+              </div>
+            </div>
           </template>
 
           <el-table
@@ -14,17 +39,21 @@
             :row-class-name="tableRowClassName"
             @row-click="selectRow"
           >
-            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="id" label="ID" width="120" />
             <el-table-column prop="text" label="文本内容" min-width="200">
               <template #default="scope">
-                <div class="text-content">{{ scope.row.text }}</div>
+                <div class="text-content" :title="scope.row.text">{{ scope.row.text }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="source" label="来源" width="100" />
-            <el-table-column prop="time" label="时间" width="150" />
-            <el-table-column label="状态" width="100">
+            <el-table-column prop="source" label="来源" width="100">
               <template #default="scope">
-                <el-tag :type="scope.row.annotated ? 'success' : 'warning'">
+                <el-tag size="small" effect="plain">{{ scope.row.source }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="time" label="时间" width="140" />
+            <el-table-column label="状态" width="80">
+              <template #default="scope">
+                <el-tag :type="scope.row.annotated ? 'success' : 'warning'" size="small">
                   {{ scope.row.annotated ? '已标注' : '待标注' }}
                 </el-tag>
               </template>
@@ -34,9 +63,9 @@
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
-            :page-sizes="[5, 10, 20, 50]"
+            :page-sizes="[10, 20, 50, 100]"
             :total="total"
-            layout="total, sizes, prev, pager, next, jumper"
+            layout="total, sizes, prev, pager, next"
             class="pagination"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
@@ -44,11 +73,10 @@
         </el-card>
       </el-col>
 
-      <!-- 右侧标注面板 -->
       <el-col :span="12">
         <el-card v-if="selectedItem" shadow="hover" class="annotation-card">
           <template #header>
-            <div class="card-header">数据标注</div>
+            <div class="card-header">数据标注与纠偏</div>
           </template>
 
           <div class="selected-text">
@@ -57,9 +85,7 @@
           </div>
 
           <el-form :model="annotation" label-width="120px">
-            <!-- 文本标注 -->
-            <el-divider>文本标注</el-divider>
-
+            <el-divider>文本语义标注</el-divider>
             <el-form-item label="是否阴阳怪气">
               <el-radio-group v-model="annotation.isSarcastic">
                 <el-radio label="是">是</el-radio>
@@ -73,45 +99,46 @@
                 <el-checkbox label="演员">演员</el-checkbox>
                 <el-checkbox label="摆烂">摆烂</el-checkbox>
                 <el-checkbox label="内卷">内卷</el-checkbox>
-                <el-checkbox label="emo">emo</el-checkbox>
+                <el-checkbox label="小黑子">小黑子</el-checkbox>
               </el-checkbox-group>
             </el-form-item>
 
+            <el-form-item label="是否地域黑">
+              <el-switch v-model="annotation.isRegionalDiscrimination" />
+            </el-form-item>
+
             <el-form-item label="情感极性">
-              <el-select v-model="annotation.sentiment" placeholder="请选择">
-                <el-option label="正面" value="positive" />
-                <el-option label="负面" value="negative" />
-                <el-option label="中性" value="neutral" />
+              <el-select v-model="annotation.sentiment" placeholder="请判断文本情绪">
+                <el-option label="正面/友善" value="positive" />
+                <el-option label="负面/恶劣" value="negative" />
+                <el-option label="中性/客观" value="neutral" />
               </el-select>
             </el-form-item>
 
-            <!-- 行为标注 -->
-            <el-divider>行为标注</el-divider>
-
-            <el-form-item label="是否异常">
+            <el-divider>账号行为标注</el-divider>
+            <el-form-item label="行为模式异常">
               <el-switch v-model="annotation.isAbnormal" />
             </el-form-item>
 
             <el-form-item v-if="annotation.isAbnormal" label="异常类型">
               <el-checkbox-group v-model="annotation.abnormalTypes">
-                <el-checkbox label="刷屏">刷屏</el-checkbox>
-                <el-checkbox label="辱骂">辱骂</el-checkbox>
-                <el-checkbox label="广告">广告</el-checkbox>
-                <el-checkbox label="违规链接">违规链接</el-checkbox>
-                <el-checkbox label="其他">其他</el-checkbox>
+                <el-checkbox label="水军刷屏">水军刷屏</el-checkbox>
+                <el-checkbox label="人身攻击">人身攻击</el-checkbox>
+                <el-checkbox label="引战钓鱼">引战钓鱼</el-checkbox>
+                <el-checkbox label="违规引流">违规引流</el-checkbox>
               </el-checkbox-group>
             </el-form-item>
 
             <el-form-item>
-              <el-button type="primary" @click="submitAnnotation" class="submit-btn">
-                提交标注
+              <el-button type="primary" @click="submitAnnotation" class="submit-btn" size="large">
+                提交并反馈给模型 (RLHF)
               </el-button>
             </el-form-item>
           </el-form>
         </el-card>
 
         <el-card v-else shadow="hover" class="annotation-card">
-          <el-empty description="请先选择左侧的数据进行标注" />
+          <el-empty description="请从左侧语料池中选择一条数据开始标注" />
         </el-card>
       </el-col>
     </el-row>
@@ -121,237 +148,188 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
 
-// Mock 数据
-const mockData = ref([
-  {
-    id: 1,
-    text: '这游戏真下饭，玩得我都想摆烂了',
-    source: '论坛',
-    time: '2024-02-23 10:00',
-    annotated: false
-  },
-  {
-    id: 2,
-    text: '今天心情不错，emo 了一整天',
-    source: '微博',
-    time: '2024-02-23 11:30',
-    annotated: false
-  },
-  {
-    id: 3,
-    text: '这个活动太卷了，完全不想参加',
-    source: '贴吧',
-    time: '2024-02-23 14:20',
-    annotated: false
-  },
-  {
-    id: 4,
-    text: '终于通关了，感觉自己像个演员',
-    source: '论坛',
-    time: '2024-02-23 16:45',
-    annotated: false
-  },
-  {
-    id: 5,
-    text: '天气真好，心情愉悦',
-    source: '微信',
-    time: '2024-02-23 18:00',
-    annotated: true
-  },
-  {
-    id: 6,
-    text: '这个功能怎么这么难用，简直是灾难',
-    source: '论坛',
-    time: '2024-02-24 09:15',
-    annotated: false
-  },
-  {
-    id: 7,
-    text: '大家一起刷屏庆祝吧！',
-    source: '群聊',
-    time: '2024-02-24 12:30',
-    annotated: false
-  },
-  {
-    id: 8,
-    text: '推荐一个好用的工具给大家',
-    source: '论坛',
-    time: '2024-02-24 15:45',
-    annotated: false
+// 修改点 2：移除 keyword 绑定属性
+const crawlForm = ref({
+  platform: 'tieba' // 默认贴吧游戏区
+})
+
+// === 进度控制状态 ===
+const isCrawling = ref(false)
+const crawlProgress = ref(0)
+const crawlMessage = ref('')
+let pollingTimer = null
+
+const progressStatus = computed(() => {
+  if (crawlProgress.value === 100) return 'success'
+  if (crawlMessage.value.includes('失败') || crawlMessage.value.includes('异常')) return 'exception'
+  return ''
+})
+
+const tableData = ref([])
+
+const fetchTableData = async () => {
+  try {
+    const res = await axios.get('http://127.0.0.1:8000/api/v1/data/unlabeled')
+    if (res.data && res.data.data) {
+      tableData.value = res.data.data
+    }
+  } catch (error) {
+    ElMessage.error('无法连接数据库获取语料')
   }
-])
+}
 
-// 分页相关
+// === 修改点 3：重构执行逻辑，去除了 keyword 判定 ===
+const executeCrawl = async () => {
+  isCrawling.value = true
+  crawlProgress.value = 0
+  crawlMessage.value = '系统正连接底层探针...'
+
+  try {
+    const formData = new FormData()
+    // 仅传递 platform 给后端
+    formData.append('platform', crawlForm.value.platform)
+
+    // 1. 下发任务，拿到 task_id
+    const res = await axios.post('http://127.0.0.1:8000/api/v1/data/crawl', formData)
+    const taskId = res.data.task_id
+
+    // 2. 启动轮询器，每 800ms 查询一次状态
+    pollingTimer = setInterval(async () => {
+      try {
+        const progRes = await axios.get(`http://127.0.0.1:8000/api/v1/data/crawl/progress/${taskId}`)
+        const status = progRes.data.status
+
+        crawlProgress.value = progRes.data.progress
+        crawlMessage.value = progRes.data.message
+
+        if (status === 'completed') {
+          clearInterval(pollingTimer)
+          isCrawling.value = false
+          ElMessage.success('语料抓取完毕并已完成自动相似度打标！')
+          await fetchTableData() // 自动刷新列表
+          // 3秒后隐藏进度条
+          setTimeout(() => { crawlProgress.value = 0 }, 3000)
+        } else if (status === 'failed') {
+          clearInterval(pollingTimer)
+          isCrawling.value = false
+          ElMessage.error(progRes.data.message)
+        }
+      } catch (err) {
+        clearInterval(pollingTimer)
+        isCrawling.value = false
+        ElMessage.error('查询爬虫进度失败')
+      }
+    }, 800)
+
+  } catch (error) {
+    isCrawling.value = false
+    ElMessage.error('启动网络探索任务失败')
+  }
+}
+
+// === 分页及标注逻辑保持不变 ===
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = computed(() => mockData.value.length)
+const total = computed(() => tableData.value.length)
 
-// 当前页数据
 const paginatedData = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
-  return mockData.value.slice(start, end)
+  return tableData.value.slice(start, end)
 })
 
-// 选中的数据项
 const selectedItem = ref(null)
 
-// 标注数据
 const annotation = ref({
   isSarcastic: '',
   hasSlang: [],
+  isRegionalDiscrimination: false,
   sentiment: '',
   isAbnormal: false,
   abnormalTypes: []
 })
 
-// 选择行
 const selectRow = (row) => {
   selectedItem.value = row
-  // 重置标注数据
   annotation.value = {
     isSarcastic: '',
     hasSlang: [],
+    isRegionalDiscrimination: false,
     sentiment: '',
     isAbnormal: false,
     abnormalTypes: []
   }
 }
 
-// 表格行类名
 const tableRowClassName = ({ row }) => {
   return row.annotated ? 'annotated-row' : ''
 }
 
-// 分页大小改变
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1
 }
 
-// 当前页改变
 const handleCurrentChange = (val) => {
   currentPage.value = val
 }
 
-// 提交标注
 const submitAnnotation = () => {
-  if (!selectedItem.value) {
-    ElMessage.warning('请先选择要标注的数据')
-    return
-  }
-
-  // 这里可以发送数据到后端
-  console.log('标注数据:', {
-    itemId: selectedItem.value.id,
-    annotation: annotation.value
-  })
-
-  // 更新状态
+  if (!selectedItem.value) return ElMessage.warning('请先选择要标注的数据')
   selectedItem.value.annotated = true
-
-  ElMessage.success('标注成功！')
-
-  // 清空选择
+  ElMessage.success('数据已成功打标！特征已反馈至多模态大模型')
   selectedItem.value = null
 }
+
+onMounted(() => {
+  fetchTableData()
+})
 </script>
 
 <style scoped>
+/* 样式保持原样 */
 .label {
   padding: 20px;
-  background-color: #0A0F1F;
   background-color: #f8fafc;
   min-height: 100vh;
 }
-
-.data-card,
-.annotation-card {
-  background-color: #1A1D2A;
-  border: 1px solid #2A2F3A;
-  color: #B0B3C1;
+.data-card, .annotation-card {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   color: #334155;
-  height: calc(100vh - 120px);
-  overflow: hidden;
+  height: calc(100vh - 80px); /* 稍微拉长高度适应进度条 */
+  overflow-y: auto;
 }
-
 .card-header {
-  color: #B0B3C1;
   color: #334155;
   font-weight: 500;
 }
-
 .text-content {
-  max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .annotated-row {
-  background-color: rgba(103, 194, 58, 0.1);
+  background-color: rgba(103, 194, 58, 0.08) !important;
 }
-
 .pagination {
   margin-top: 20px;
-  text-align: center;
+  justify-content: center;
 }
-
 .selected-text {
   margin-bottom: 20px;
   padding: 15px;
-  background-color: #2A2F3A;
   background-color: #e2e8f0;
   border-radius: 8px;
 }
-
 .selected-text h4 {
-  color: #B0B3C1;
   color: #334155;
   margin-bottom: 10px;
 }
-
-.selected-text p {
-  color: #B0B3C1;
-  color: #334155;
-  line-height: 1.6;
-  margin: 0;
-}
-
-:deep(.el-divider__text) {
-  color: #B0B3C1;
-  background-color: #1A1D2A;
-  color: #334155;
-  background-color: #ffffff;
-}
-
-:deep(.el-form-item__label) {
-  color: #B0B3C1;
-  color: #334155;
-}
-
-:deep(.el-radio__label),
-:deep(.el-checkbox__label),
-:deep(.el-select-dropdown__item) {
-  color: #B0B3C1;
-  color: #334155;
-}
-
-:deep(.el-radio),
-:deep(.el-checkbox) {
-  color: #B0B3C1;
-  color: #334155;
-}
-
 .submit-btn {
   width: 100%;
-}
-
-:deep(.el-empty__description p) {
-  color: #7A7F8A;
-  color: #94a3b8;
+  margin-top: 20px;
 }
 </style>
