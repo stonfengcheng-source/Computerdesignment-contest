@@ -66,9 +66,15 @@
               <span class="tag tag-slang">综合毒性值: {{ formatScore(analysisResult.details.final_toxicity_score) }}</span>
             </div>
 
-            <div style="margin-top: 15px; display: flex; gap: 15px;">
-              <button class="btn-text" @click="goToModule('/detect')">查看详细检测报告 &rarr;</button>
-              <button class="btn-text" @click="goToModule('/credit')">查看跨平台信用档案 &rarr;</button>
+            <div v-if="latestReportId" style="margin-top: 15px;">
+              <button class="btn-primary" style="padding: 10px 20px; border-radius: 8px; width: 100%;" @click="downloadReport">
+                📥 下载官方信用诊断判决书 (.txt)
+              </button>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: space-between;">
+              <button class="btn-text" @click="goToModule('/behavior')">查看行为检测报告 &rarr;</button>
+              <button class="btn-text" @click="jumpToCredit">查看跨平台信用档案 &rarr;</button>
             </div>
 
           </div>
@@ -113,6 +119,10 @@ const processLogs = ref([]);
 const analysisResult = ref(null);
 const logContainer = ref(null);
 
+// 💡 新增：保存刚刚生成的报告 ID
+const latestReportId = ref(null);
+const currentPlayerId = 'admin_test_001'; // 靶场默认测试ID
+
 // 进度条管理
 const progress = ref(0);
 let progressTimer = null;
@@ -124,6 +134,7 @@ const handleFileUpload = (event) => {
     videoUrl.value = URL.createObjectURL(file);
     processLogs.value = [];
     analysisResult.value = null;
+    latestReportId.value = null;
     progress.value = 0;
   }
 };
@@ -143,10 +154,8 @@ const simulateProgress = () => {
   progress.value = 0;
   progressTimer = setInterval(() => {
     if (progress.value < 85) {
-      // 前期跑得快 (模拟上传和浅层特征提取)
       progress.value += Math.floor(Math.random() * 5) + 2;
     } else if (progress.value < 98) {
-      // 后期龟速 (模拟卡在深度学习模型推理阶段)
       progress.value += 1;
     }
   }, 600);
@@ -158,14 +167,15 @@ const startAnalysis = async () => {
   isAnalyzing.value = true;
   processLogs.value = [];
   analysisResult.value = null;
+  latestReportId.value = null;
 
-  simulateProgress(); // 启动视觉进度条
+  simulateProgress();
 
   addLog(">>> [系统中枢] 收到指令，开始封包多模态数据...", "info");
 
   const formData = new FormData();
   formData.append('video_file', selectedFile.value);
-  formData.append('player_id', 'admin_test_001');
+  formData.append('player_id', currentPlayerId);
 
   try {
     addLog(">>> [模块1] 启动 CV+NLP 引擎：向后端发送视频，提取特征流...", "process");
@@ -180,7 +190,6 @@ const startAnalysis = async () => {
       method: 'POST',
     });
 
-    // 1. 等待前置两大核心模型计算完毕
     const [videoResponse, graphResponse] = await Promise.all([
       videoAnalysisPromise,
       graphAnalysisPromise
@@ -206,10 +215,8 @@ const startAnalysis = async () => {
       addLog(`[模块2] 图谱训练异常：${graphData.message}`, "warn");
     }
 
-    // ================= 新增：模块 3 信用报告生成 =================
     addLog(">>> [模块3] 启动信用评估模型：正在融合多模态特征生成综合信用报告...", "process");
 
-    // 提取视频分析得到的分数，作为生成报告的入参
     const textScore = videoData.result?.details?.text_sentiment_prob || 0.1;
     const behaviorScore = videoData.result?.details?.behavior_anomaly_score || 0.1;
 
@@ -217,23 +224,23 @@ const startAnalysis = async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        player_id: 'admin_test_001',
+        player_id: currentPlayerId,
         text_toxicity: textScore,
-        audio_toxicity: 0.05, // 暂用默认值
+        audio_toxicity: 0.05,
         behavior_anomaly: behaviorScore,
-        graph_risk: 0.82 // GAT网络输出的风险系数
+        graph_risk: 0.82
       })
     });
 
     const reportData = await reportResponse.json();
     if (reportData.status === "success") {
       addLog(">>> [模块3] 玩家专属信用评级报告已生成！", "success");
+      // 💡 保存生成的报告ID，让下载按钮亮起
+      latestReportId.value = reportData.record_id;
     } else {
       addLog(`[模块3] 报告生成异常：${reportData.message}`, "warn");
     }
-    // ==============================================================
 
-    // 真实数据返回，瞬间拉满进度条
     clearInterval(progressTimer);
     progress.value = 100;
 
@@ -249,6 +256,24 @@ const startAnalysis = async () => {
   }
 };
 
+// 💡 新增：触发下载逻辑
+const downloadReport = () => {
+  if (latestReportId.value) {
+    // 创建一个隐藏的 a 标签触发下载，避免被浏览器当作恶意弹窗拦截
+    const link = document.createElement('a');
+    link.href = `http://127.0.0.1:8000/api/v1/report/download/${latestReportId.value}`;
+    link.setAttribute('download', ''); // 提示浏览器这是下载请求
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
+// 💡 新增：携带参数跳转信用页，实现“有意义的跳转”
+const jumpToCredit = () => {
+  router.push({ path: '/credit', query: { id: currentPlayerId } });
+};
+
 const formatScore = (val) => {
   return typeof val === 'number' ? val.toFixed(4) : val;
 };
@@ -257,7 +282,6 @@ const rawModules = [
   { icon: '🕸️', title: '风险溯源拓扑', desc: '利用GAT图神经网络找出污染源与传播路径', route: '/trace' },
   { icon: '🛡️', title: '跨平台信用评级', desc: '异构数据打分，生成用户综合游戏信用画像', route: '/credit' },
   { icon: '🎭', title: '阴阳怪气分析', desc: '调用 NLP 引擎深度识别隐藏嘲讽', route: '/detect' },
-  // 💡 修复：将言行不一的 route 从 /detect 改为 /behavior
   { icon: '🎮', title: '言行不一检测', desc: '比对行为流与文本流，定位异常消极行为', route: '/behavior' }
 ];
 
@@ -266,7 +290,7 @@ const goToModule = (path) => { router.push(path); };
 </script>
 
 <style scoped>
-/* 保持你原本的全局样式不变，只追加了进度条的炫酷样式 */
+/* 保持所有样式不变... */
 .dashboard-container { padding: 30px 40px; background-color: #f8fafc; min-height: 100vh; color: #334155; font-family: 'Inter', sans-serif;}
 .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
 .header-left h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; }
@@ -323,7 +347,6 @@ const goToModule = (path) => { router.push(path); };
 .btn-text { background: transparent; border: none; color: #38bdf8; cursor: pointer; padding: 0; font-size: 0.9rem; }
 .btn-text:hover { text-decoration: underline; }
 
-/* 🚀 进度条新增样式 */
 .progress-overlay {
   position: absolute;
   bottom: 0;
@@ -340,28 +363,7 @@ const goToModule = (path) => { router.push(path); };
   z-index: 12;
   backdrop-filter: blur(4px);
 }
-
-.progress-text {
-  color: #38bdf8;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-  letter-spacing: 0.5px;
-}
-
-.progress-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
-  border-radius: 4px;
-  transition: width 0.3s ease-out;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
-}
+.progress-text { color: #38bdf8; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+.progress-track { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #38bdf8); border-radius: 4px; transition: width 0.3s ease-out; box-shadow: 0 0 10px rgba(56, 189, 248, 0.6); }
 </style>

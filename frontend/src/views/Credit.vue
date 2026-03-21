@@ -1,7 +1,7 @@
 <template>
   <div class="credit">
     <el-card shadow="hover" class="search-card">
-      <el-form :inline="true" class="search-form">
+      <el-form :inline="true" class="search-form" @submit.prevent>
         <el-form-item label="玩家游戏ID">
           <el-input
             v-model="playerId"
@@ -10,6 +10,7 @@
             @keyup.enter="search"
           />
         </el-form-item>
+
         <el-form-item>
           <el-button
             type="primary"
@@ -17,6 +18,15 @@
             :loading="searching"
           >
             全网深度检索
+          </el-button>
+        </el-form-item>
+
+        <el-form-item v-if="creditData">
+          <el-button
+            type="success"
+            @click="downloadLatestReport"
+          >
+            📥 下载最新信用报告
           </el-button>
         </el-form-item>
       </el-form>
@@ -77,8 +87,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+
+const route = useRoute()
 
 // 响应式数据
 const playerId = ref('')
@@ -92,6 +105,16 @@ const platformChartRef = ref(null)
 let radarChart = null
 let platformChart = null
 
+// ====== 💡 新增：监听路由自动搜索 ======
+onMounted(() => {
+  window.addEventListener('resize', handleResize)
+  // 如果从靶场跳转过来，路由里会有 ?id=xxx 参数
+  if (route.query.id) {
+    playerId.value = route.query.id
+    search() // 自动触发搜索
+  }
+})
+
 // ====== 真实调用后端接口 ======
 const search = async () => {
   if (!playerId.value.trim()) {
@@ -102,24 +125,21 @@ const search = async () => {
   searching.value = true
 
   try {
-    // 真实请求后端 API (依赖 vite.config.js 的代理)
-    const response = await fetch(`/api/v1/credit/${playerId.value}`)
+    const response = await fetch(`http://127.0.0.1:8000/api/v1/credit/${playerId.value}`)
     const json = await response.json()
 
     if (response.ok && json.status === 'success') {
       const data = json.data
 
-      // 映射后端返回的真实数据结构
       creditData.value = {
         totalScore: data.cross_platform_credit_score,
         level: data.credit_level,
-        radar: data.radar_chart,            // {game_attitude, social_friendly, team_coop}
-        platforms: data.platform_details    // [{platform, afk_rate, report_rate, toxic_words_freq}, ...]
+        radar: data.radar_chart,
+        platforms: data.platform_details
       }
 
       ElMessage.success('信用数据聚合完毕！')
 
-      // 等待 DOM 更新后重新渲染图表
       await nextTick()
       initCharts()
     } else {
@@ -133,18 +153,30 @@ const search = async () => {
   }
 }
 
+// ====== 💡 下载逻辑修复 ======
+const downloadLatestReport = () => {
+  if (!playerId.value) return;
+  // 使用 a 标签隐藏下载避免浏览器拦截新窗口
+  const link = document.createElement('a');
+  link.href = `http://127.0.0.1:8000/api/v1/report/download_latest/${playerId.value}`;
+  link.setAttribute('download', '');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 // ====== 分数颜色动态计算 ======
 const getScoreColor = (score) => {
-  if (score >= 85) return '#67C23A' // 优秀 绿色
-  if (score >= 70) return '#E6A23C' // 良好 橙色
-  return '#F56C6C' // 极差 红色
+  if (score >= 85) return '#67C23A'
+  if (score >= 70) return '#E6A23C'
+  return '#F56C6C'
 }
 
 // ====== 初始化信用维度柱状图 ======
 const initRadarChart = () => {
   if (!radarChartRef.value || !creditData.value) return
 
-  if (radarChart) radarChart.dispose() // 避免重复渲染导致内存泄漏
+  if (radarChart) radarChart.dispose()
   radarChart = echarts.init(radarChartRef.value)
 
   const option = {
@@ -180,7 +212,6 @@ const initPlatformChart = () => {
   if (platformChart) platformChart.dispose()
   platformChart = echarts.init(platformChartRef.value)
 
-  // 从后端数据中解析出 X 轴和各系列数据 (将概率 0.15 转换为 15%)
   const platforms = creditData.value.platforms.map(p => p.platform)
   const afkData = creditData.value.platforms.map(p => (p.afk_rate * 100).toFixed(1))
   const reportData = creditData.value.platforms.map(p => (p.report_rate * 100).toFixed(1))
@@ -190,7 +221,7 @@ const initPlatformChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (value) => value + '%' // 提示框带百分号
+      valueFormatter: (value) => value + '%'
     },
     legend: { data: ['挂机率', '被举报率', '言语违规率'], bottom: 0 },
     grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
@@ -217,15 +248,10 @@ const initCharts = () => {
   initPlatformChart()
 }
 
-// 响应式调整
 const handleResize = () => {
   if (radarChart) radarChart.resize()
   if (platformChart) platformChart.resize()
 }
-
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -235,87 +261,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.credit {
-  padding: 20px;
-  background-color: #f8fafc;
-  min-height: 100vh;
-}
-
-.search-card {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 20px;
-  border-radius: 12px;
-}
-
-.search-form {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end; /* 让按钮和输入框底对齐 */
-}
-
-.search-input {
-  width: 350px;
-}
-
-.results {
-  margin-top: 20px;
-}
-
-.score-card {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  text-align: center;
-  height: 100%;
-}
-
-.card-header {
-  color: #334155;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-
-.score-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 300px;
-}
-
-.score-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.current-score {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.credit-level {
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 8px;
-  padding: 2px 12px;
-  border-radius: 12px;
-  background-color: rgba(0,0,0,0.05);
-}
-
-.score-desc {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  margin-top: -10px;
-}
-
-.chart-container {
-  width: 100%;
-  height: 300px;
-}
-
-.empty-state {
-  margin-top: 100px;
-}
+/* 保持所有样式不变... */
+.credit { padding: 20px; background-color: #f8fafc; min-height: 100vh; }
+.search-card { background-color: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; border-radius: 12px; }
+.search-form { display: flex; justify-content: center; align-items: flex-end; }
+.search-input { width: 350px; }
+.results { margin-top: 20px; }
+.score-card { background-color: #ffffff; border: 1px solid #e2e8f0; text-align: center; height: 100%; }
+.card-header { color: #334155; font-weight: 700; font-size: 1.1rem; }
+.score-display { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
+.score-text { display: flex; flex-direction: column; align-items: center; }
+.current-score { font-size: 40px; font-weight: 800; line-height: 1; }
+.credit-level { font-size: 16px; font-weight: bold; margin-top: 8px; padding: 2px 12px; border-radius: 12px; background-color: rgba(0,0,0,0.05); }
+.score-desc { color: #94a3b8; font-size: 0.9rem; margin-top: -10px; }
+.chart-container { width: 100%; height: 300px; }
+.empty-state { margin-top: 100px; }
 </style>
