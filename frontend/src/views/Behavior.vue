@@ -87,7 +87,7 @@
                   </span>
                 </td>
                 <td>
-                  <button class="action-btn">查看回放</button>
+                  <button class="btn-view-report" @click="handleOpenReport(item)">查看信用报告</button>
                 </td>
               </tr>
             </tbody>
