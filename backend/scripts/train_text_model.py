@@ -1,68 +1,95 @@
 # backend/scripts/train_text_model.py
 import os
+import json
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification
+import pandas as pd
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import Trainer, TrainingArguments
 from datasets import Dataset
-import pandas as pd
+
+
+def load_json_dataset(json_path):
+    """加载 json 格式的隐式阴阳怪气数据集"""
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    df = pd.DataFrame(data)
+    # 核心：构造带有语境的输入格式
+    df['combined_text'] = "话题：" + df['topic'].astype(str) + " 评论：" + df['text'].astype(str)
+    df['label'] = df['label'].astype(int)
+    return df[['combined_text', 'label']]
+
+
+def load_csv_dataset(csv_path):
+    """加载 ToxiCN 显式攻击数据集进行数据增强"""
+    df = pd.read_csv(csv_path)
+    df = df[['topic', 'content', 'toxic']].dropna()
+    df['combined_text'] = "话题：" + df['topic'].astype(str) + " 评论：" + df['content'].astype(str)
+    df.rename(columns={'toxic': 'label'}, inplace=True)
+    return df[['combined_text', 'label']]
 
 
 def train_and_save_model():
-    print("开始加载基础预训练模型...")
-    # 1. 采用学术界常用的中文 BERT 预训练模型作为基座
-    model_name = "bert-base-chinese"
-    tokenizer = BertTokenizer.from_pretrained(model_name)
-    model = BertForSequenceClassification.from_pretrained(model_name, num_labels=2)  # 2分类：正常(0) / 违规(1)
+    print("1. 开始加载 RoBERTa 预训练基座模型...")
+    model_name = "hfl/chinese-roberta-wwm-ext"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # 2分类：正常(0) / 违规或阴阳怪气(1)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
-    # 2. 准备你的真实训练数据集 (你需要准备一个包含 'text' 和 'label' 的 CSV)
-    # 这里是加载数据的范例，请替换为你自己的数据文件路径
-    # df = pd.read_csv('../data/game_chat_dataset.csv')
+    print("2. 加载与融合真实数据集...")
+    # 请确保以下路径下的文件存在
+    data_dir = r"D:\PythonProject\Computerdesignment-contest\backend\data\datasets"
 
-    # 【严谨测试】：如果你暂时没有海量数据，我们可以先用一个极小的数据集让训练跑通
-    mock_data = {
-        "text": ["兄弟们稳住，能赢", "你这操作像个傻子", "一起推中路", "菜狗别送了"],
-        "label": [0, 1, 0, 1]  # 0代表正常，1代表毒性/阴阳怪气
-    }
-    df = pd.DataFrame(mock_data)
+    train_df = load_json_dataset(os.path.join(data_dir, "train.json"))
+    dev_df = load_json_dataset(os.path.join(data_dir, "dev.json"))
 
-    # 将 Pandas DataFrame 转为 HuggingFace Dataset
-    dataset = Dataset.from_pandas(df)
+    # 抽取部分 ToxiCN 数据混合训练，提升模型对直接脏话的拦截能力
+    toxicn_df = load_csv_dataset(os.path.join(data_dir, "ToxiCN_1.0.csv"))
+    # 混合训练集并打乱
+    combined_train_df = pd.concat([train_df, toxicn_df.sample(frac=0.3, random_state=42)]).sample(frac=1).reset_index(
+        drop=True)
 
-    # 分词处理函数
+    train_dataset = Dataset.from_pandas(combined_train_df)
+    dev_dataset = Dataset.from_pandas(dev_df)
+
     def tokenize_function(examples):
-        return tokenizer(examples["text"], padding="max_length", truncation=True, max_length=64)
+        # 截断长度设为128，平衡性能和显存
+        return tokenizer(examples["combined_text"], padding="max_length", truncation=True, max_length=128)
 
-    tokenized_datasets = dataset.map(tokenize_function, batched=True)
+    print("3. 数据分词处理 (Tokenization)...")
+    tokenized_train = train_dataset.map(tokenize_function, batched=True)
+    tokenized_dev = dev_dataset.map(tokenize_function, batched=True)
 
-    # 3. 设置真实的训练超参数
+    # 4. 设置指定的保存路径
+    save_path = r"D:\PythonProject\Computerdesignment-contest\backend\data\weights\toxicity_model"
+    os.makedirs(save_path, exist_ok=True)
+
+    print("4. 设置训练超参数...")
     training_args = TrainingArguments(
-        output_dir="./results",
-        num_train_epochs=3,  # 迭代次数
-        per_device_train_batch_size=8,  # 批次大小
-        learning_rate=2e-5,  # 学习率
-        logging_steps=10,
+        output_dir=save_path,
+        num_train_epochs=3,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        learning_rate=2e-5,
+        logging_steps=50,
+        eval_strategy="epoch",  # ❗修复点：修改为新版本的 eval_strategy
+        save_strategy="epoch",
+        load_best_model_at_end=True,
     )
 
-    # 4. 启动 Trainer 进行真实梯度下降和权重更新
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_datasets,
+        train_dataset=tokenized_train,
+        eval_dataset=tokenized_dev,
     )
 
     print("🚀 开始真实训练 (反向传播更新权重)...")
     trainer.train()
 
-    # 5. 【核心步骤】：把训练好的真实权重保存到报错提示的那个目录里！
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    save_path = os.path.join(BASE_DIR, 'data', 'weights', 'toxicity_model')
-    os.makedirs(save_path, exist_ok=True)
-
+    print("5. 保存最终模型权重...")
     model.save_pretrained(save_path)
     tokenizer.save_pretrained(save_path)
-
-    print(f"✅ 学术模型训练完成！真实权重已成功保存至：{save_path}")
-    print("现在你可以启动 main.py，系统将加载真实的 AI 参数！")
+    print(f"✅ 模型训练完成！真实权重已成功保存至：{save_path}")
 
 
 if __name__ == "__main__":
