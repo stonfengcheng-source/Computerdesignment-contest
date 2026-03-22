@@ -6,6 +6,7 @@ import shutil
 import asyncio
 import traceback
 from typing import List
+from app.ml_models.nlp_model import RoBERTaAnalyzer
 
 # ================= 修复 Windows 下 Playwright 的 NotImplementedError =================
 if sys.platform == "win32":
@@ -37,7 +38,8 @@ from app.services.crawler_service import GameEcologyCrawler
 from app.text_api import router as text_router
 
 # 5. 模型层：机器学习/图算法模型
-from app.ml_models.gat_model import train_gat
+# 导入改名后的训练函数
+from app.ml_models.gat_model import train_and_save_gat
 
 # 6. 工具类
 from utils import gexf_to_echarts
@@ -92,7 +94,8 @@ def update_risk_topology_task():
         y = torch.zeros(len(nodes), dtype=torch.long)
         if len(y) >= 2:
             y[:2] = 1  # 简单模拟源头节点标签
-        train_gat(x, edge_index, y)
+        # 使用新函数名，并指定权重保存路径
+        train_and_save_gat(x, edge_index, y, save_path=os.path.join(DATA_DIR, "weights", "gat_weights.pt"))
         print(f"🔄 风险拓扑已在后台动态更新完成，当前网络节点数: {len(nodes)}")
     except Exception as e:
         print(f"⚠️ 拓扑动态更新失败: {str(e)}")
