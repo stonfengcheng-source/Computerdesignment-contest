@@ -588,6 +588,7 @@ def analyze_trace(req: TraceAnalyzeRequest, background_tasks: BackgroundTasks, d
         db.rollback()
         return {"status": "error", "message": f"分析失败: {str(e)}"}
 
+
 # ================= 启动入口 =================
 if __name__ == "__main__":
     import uvicorn
