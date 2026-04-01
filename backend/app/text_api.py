@@ -3,9 +3,18 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 # 引入算分函数
 from app.ml_models.text_model import get_toxicity_score
+from fastapi import APIRouter
 
 # 创建专属路由，绝不和队友的代码搅合在一起
 router = APIRouter()
+
+
+import os
+import random
+import pandas as pd
+import json
+from fastapi import APIRouter, Form, Depends
+from sqlalchemy.orm import Session
 
 @router.post("/analyze_text")
 async def analyze_game_text(

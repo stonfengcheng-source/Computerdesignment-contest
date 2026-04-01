@@ -6,16 +6,10 @@ requests
 urllib3<2.0.0
 six
 
-numpy
-pandas
-scikit-learn
-xgboost
+numpy pandas scikit-learn xgboost
 
-torch
-torch-geometric
-networkx
-matplotlib
-transformers
-hf-transfer
+torch torch-geometric networkx matplotlib
 
-beautifulsoup4
+transformers == 4.18.0
+
+hf-transfer beautifulsoup4

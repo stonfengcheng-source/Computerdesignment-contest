@@ -9,6 +9,7 @@ from typing import List, Optional
 from app.ml_models.nlp_model import RoBERTaAnalyzer
 from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
+import random
 
 # ================= 修复 Windows 下 Playwright 的 NotImplementedError =================
 if sys.platform == "win32":
@@ -588,6 +589,56 @@ def analyze_trace(req: TraceAnalyzeRequest, background_tasks: BackgroundTasks, d
         db.rollback()
         return {"status": "error", "message": f"分析失败: {str(e)}"}
 
+
+@app.get("/api/datasets/toxicn", tags=["前端直连接口"])
+def get_real_dataset():
+    # 精准定位 backend/data/datasets 目录
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATASETS_DIR = os.path.join(BASE_DIR, "data", "datasets")
+
+    texts_pool = []
+    files_to_try = ["ToxiCN_1.0.csv", "train.json", "dev.json", "test.json"]
+
+    for file_name in files_to_try:
+        file_path = os.path.join(DATASETS_DIR, file_name)
+        if not os.path.exists(file_path):
+            continue
+        try:
+            if file_name.endswith('.csv'):
+                df = pd.read_csv(file_path)
+                text_col = 'text' if 'text' in df.columns else ('content' if 'content' in df.columns else df.columns[0])
+                for t in df[text_col].dropna().tolist():
+                    if len(str(t)) > 5:
+                        texts_pool.append({"text": str(t), "source": file_name})
+            elif file_name.endswith('.json'):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    try:
+                        for item in json.load(f):
+                            text = item.get('text', '') if isinstance(item, dict) else str(item)
+                            if len(text) > 5: texts_pool.append({"text": text, "source": file_name})
+                    except:
+                        f.seek(0)
+                        for line in f:
+                            if line.strip():
+                                text = json.loads(line.strip()).get('text', '')
+                                if len(text) > 5: texts_pool.append({"text": text, "source": file_name})
+        except Exception as e:
+            print(f"读取文件 {file_name} 失败: {e}")
+
+    if not texts_pool:
+        return {"error": "未找到数据集，请检查目录"}
+
+    random.shuffle(texts_pool)
+    selected_pool = texts_pool[:1200]
+
+    return [
+        {
+            "id": f"TX-{10000 + i}",
+            "text": item["text"],
+            "status": "已完成" if i % 9 == 0 else "待标注",
+            "source": item["source"]
+        } for i, item in enumerate(selected_pool)
+    ]
 
 # ================= 启动入口 =================
 if __name__ == "__main__":

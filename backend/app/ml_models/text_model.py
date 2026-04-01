@@ -29,44 +29,62 @@ label_map = {
     "target": ["LGBTQ", "地区", "性别", "种族", "其他", "无恨"]
 }
 
-if ENABLE_TEXT_AI:
-    print(">> [文本模块] 🚀 准备点火：正在加载深蓝卫士 M-IARD 五维多任务核心引擎...")
-    try:
-        # 1. 初始化配置
-        config = Config_base("hfl/chinese-roberta-wwm-ext", "ToxiCN")
-        device = config.device
-        
-        # 2. 准备分词器与脏词感官库
-        tokenizer = AutoTokenizer.from_pretrained(config.model_name)
-        all_dirty_words = get_all_dirty_words(config.lexicon_path)
-        
-        # 3. 实例化你的五头多任务网络架构
-        model = MultiTaskModel(config).to(device)
-        
-        # 4. 智能定位你的 BEST.tar 权重文件
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        weights_dir = os.path.join(BASE_DIR, "data", "weights")
-        
-        # 自动在 data/weights 目录下寻找以 .tar 结尾的文件
-        tar_files = [f for f in os.listdir(weights_dir) if f.endswith('.tar')]
-        if not tar_files:
-            raise FileNotFoundError(f"❌ 找不到权重！请确保你把训练好的 BEST.tar 放到了 {weights_dir} 目录下！")
-            
-        model_path = os.path.join(weights_dir, tar_files[0])
-        print(f">> [文本模块] 正在注入灵魂参数: {tar_files[0]}")
-        
-        # 5. 加载权重并开启战斗模式 (eval)
-        checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        model.eval() 
-        
-        print(">> [文本模块] 🎉 游戏黑话五维模型加载成功！全副武装！")
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise RuntimeError(f">> [文本模块] ❌ 模型加载失败: {e}")
-else:
-    print(">> [文本模块] ⚠️ 注意：未开启真实大模型 (ENABLE_TEXT_AI=False)")
+#if ENABLE_TEXT_AI:
+print(">> [文本模块] 🚀 准备点火：正在加载深蓝卫士 M-IARD 五维多任务核心引擎...")
+try:
+    # --- 1. 动态计算路径 (确保无论从哪启动都能精准定位) ---
+    # 当前文件在 backend/app/ml_models/
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # 向上三级到达项目根目录 (backend/ 的父目录)
+    # 如果你的 backend 就是根目录，请确保路径指向正确
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    # 队友说的：pretrained_model 放在 backend/ 目录下
+    # 这里拼出它的绝对路径
+    LOCAL_MODEL_PATH = os.path.join(BASE_DIR, "backend", "pretrained_model")
+
+    # 检查本地文件夹是否存在，防止报 MissingSchema 错误
+    if not os.path.exists(LOCAL_MODEL_PATH):
+        # 兼容性尝试：如果上面路径不对，尝试当前目录的上上级
+        LOCAL_MODEL_PATH = os.path.join(os.getcwd(), "pretrained_model")
+
+    print(f">> [文本模块] 正在从本地加载基础配置: {LOCAL_MODEL_PATH}")
+
+    # --- 2. 使用本地路径初始化配置 (关键修改点！) ---
+    # 不要传 "hfl/chinese-roberta-wwm-ext"，直接传 LOCAL_MODEL_PATH
+    config = Config_base(LOCAL_MODEL_PATH, "ToxiCN")
+    device = config.device
+
+    # --- 3. 准备分词器 (此时 from_pretrained 会直接读本地 json) ---
+    tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
+    all_dirty_words = get_all_dirty_words(config.lexicon_path)
+
+    # --- 4. 实例化网络 ---
+    model = MultiTaskModel(config).to(device)
+
+    # --- 5. 定位并加载 .tar 权重 (保持你原有的逻辑，只需确保 weights_dir 正确) ---
+    weights_dir = os.path.join(BASE_DIR,  "data", "weights")
+    tar_files = [f for f in os.listdir(weights_dir) if f.endswith('.tar')]
+    if not tar_files:
+        raise FileNotFoundError(f"❌ 找不到权重！请检查 {weights_dir}")
+
+    model_path = os.path.join(weights_dir, tar_files[0])
+    print(f">> [文本模块] 正在注入灵魂参数: {tar_files[0]}")
+
+    # 关键点：队友代码里用的是 'model_state_dict'，确保 Key 对应
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+
+    print(">> [文本模块] 🎉 本地离线模型加载成功！")
+
+except Exception as e:
+    import traceback
+
+    traceback.print_exc()
+    raise RuntimeError(f">> [文本模块] ❌ 模型加载失败: {e}")
+#else:
+#    print(">> [文本模块] ⚠️ 注意：未开启真实大模型 (ENABLE_TEXT_AI=False)")
 
 
 def get_toxicity_score(text: str) -> float:

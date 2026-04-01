@@ -1,369 +1,440 @@
 <template>
   <div class="dashboard-container">
-    <header class="dashboard-header">
+    <header class="page-header">
       <div class="header-left">
-        <h1>深蓝卫士·管理员控制台</h1>
-        <p>系统运行状态：<span class="status-online">● 核心多模态引擎运行中</span></p>
+        <h1 class="page-title">数据总览台</h1>
+        <p class="page-subtitle">欢迎回来。系统正在实时净化游戏网络环境，当前运行状态良好。</p>
       </div>
-      <div class="header-right">
-        <div class="stat-badge">今日处理流：<span>12,408</span></div>
-        <div class="stat-badge alert">拦截违规：<span>342</span></div>
+      <div class="header-right text-secondary">
+        <span class="update-time">🕒 最后更新: 2024-05-24 14:30:22</span>
       </div>
     </header>
 
-    <section class="demo-section">
-      <div class="section-title">
-        <h2>多模态分析靶场 (真实全链路测试)</h2>
-        <p>上传游戏对局录像，调用后端 OpenCV 视觉引擎与 BERT NLP 模型，结果存入 SQLite。</p>
-      </div>
-
-      <div class="demo-workspace">
-        <div class="upload-area" :class="{ 'has-file': videoUrl }">
-          <input type="file" accept="video/*" @change="handleFileUpload" class="file-input" :disabled="isAnalyzing" />
-
-          <div v-if="!videoUrl" class="upload-placeholder">
-            <div class="upload-icon">📁</div>
-            <h3>点击或拖拽游戏录像至此处</h3>
-            <p>支持 MP4, WebM 格式</p>
-          </div>
-
-          <div v-else class="video-preview">
-            <video :src="videoUrl" controls style="background: #000; z-index: 5;" class="preview-player"></video>
-
-            <div v-if="isAnalyzing" class="progress-overlay">
-              <div class="progress-text">多模态引擎超载运算中... {{ progress }}%</div>
-              <div class="progress-track">
-                <div class="progress-fill" :style="{ width: progress + '%' }"></div>
-              </div>
-            </div>
-
-            <button v-else class="btn-primary start-btn" @click="startAnalysis">
-              发送至后端并启动分析
-            </button>
-          </div>
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="card-header">
+          <span class="card-title">今日游戏场均数量</span>
+          <span class="icon blue-icon">🎮</span>
         </div>
-
-        <div class="analysis-panel">
-          <div class="panel-header">分析链路日志 & 数据库响应</div>
-          <div class="log-container" ref="logContainer">
-            <div v-if="processLogs.length === 0" class="empty-log">等待输入多模态数据...</div>
-            <div v-for="(log, index) in processLogs" :key="index" class="log-item" :class="log.type">
-              <span class="time">[{{ log.time }}]</span>
-              <span class="text">{{ log.msg }}</span>
+        <div class="card-body">
+          <h2 class="kpi-number">12,842</h2>
+          <span class="trend up">↗ 4.2%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="card-header">
+          <span class="card-title">言行不一致数</span>
+          <span class="icon gray-icon">🎭</span>
+        </div>
+        <div class="card-body">
+          <h2 class="kpi-number">458</h2>
+          <span class="trend up-danger">↗ 12.5%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="card-header">
+          <span class="card-title">风险言论总数</span>
+          <span class="icon red-icon">🛡️</span>
+        </div>
+        <div class="card-body">
+          <h2 class="kpi-number">3,120</h2>
+          <span class="trend down">↘ 8.1%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="card-header">
+          <span class="card-title">日历</span>
+          <span class="icon blue-icon">📅</span>
+        </div>
+        <div class="card-body">
+          <div class="date-group">
+            <span class="year-month">2024年5月</span>
+            <div class="day-row">
+              <h2 class="kpi-number">24日 星期五</h2>
+              <span class="arrow-down">˅</span>
             </div>
-          </div>
-
-          <div v-if="analysisResult" class="result-summary">
-            <h4>综合评定结果：
-              <span :class="analysisResult.is_inconsistent ? 'danger' : 'success'">
-                {{ analysisResult.is_inconsistent ? '检测到言行不一 / 违规风险' : '未见明显异常' }}
-                (风险等级: {{ analysisResult.risk_level }})
-              </span>
-            </h4>
-            <div class="result-tags">
-              <span class="tag tag-sarcasm">文本异常分: {{ formatScore(analysisResult.details.text_sentiment_prob) }}</span>
-              <span class="tag tag-behavior">行为异常分: {{ formatScore(analysisResult.details.behavior_anomaly_score) }}</span>
-              <span class="tag tag-slang">综合毒性值: {{ formatScore(analysisResult.details.final_toxicity_score) }}</span>
-            </div>
-
-            <div v-if="latestReportId" style="margin-top: 15px;">
-              <button class="btn-primary" style="padding: 10px 20px; border-radius: 8px; width: 100%;" @click="downloadReport">
-                📥 下载官方信用诊断判决书 (.txt)
-              </button>
-            </div>
-
-            <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: space-between;">
-              <button class="btn-text" @click="goToModule('/behavior')">查看行为检测报告 &rarr;</button>
-              <button class="btn-text" @click="jumpToCredit">查看跨平台信用档案 &rarr;</button>
-            </div>
-
           </div>
         </div>
       </div>
     </section>
 
-    <section class="modules-section">
-      <h2 class="sub-title">系统功能矩阵</h2>
+    <section class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>近七日风险言论趋势</h3>
+          <span class="legend-dot blue">风险指数</span>
+        </div>
+        <div class="chart-content" ref="barChartRef"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>近七日言行不一致趋势</h3>
+          <span class="legend-dot dark">异动检测</span>
+        </div>
+        <div class="chart-content" ref="lineChartRef"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>游戏中风险言论分布</h3>
+          <span class="legend-text">比例</span>
+        </div>
+        <div class="chart-content" ref="distributionChartRef"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>游戏中各类风险言论占比</h3>
+        </div>
+        <div class="chart-content" ref="pieChartRef"></div>
+      </div>
+    </section>
 
-      <div class="modules-grid">
-        <div
-          v-for="(mod, index) in processedModules"
-          :key="index"
-          class="module-card"
-          @click="goToModule(mod.route)"
-        >
-          <div class="card-icon">{{ mod.icon }}</div>
-          <div class="card-content">
-            <h3>{{ mod.title }}</h3>
-            <p>{{ mod.desc }}</p>
+    <section class="bottom-grid">
+      <div class="monitor-card card">
+        <h3>专项监控数据</h3>
+        <div class="progress-list">
+          <div class="progress-item">
+            <div class="progress-info">
+              <div class="icon-box alert-box">🚨</div>
+              <span class="progress-label">场次预警</span>
+              <span class="value text-danger">18</span>
+            </div>
+            <div class="progress-bar"><div class="fill danger" style="width: 18%"></div></div>
           </div>
-          <div class="card-arrow">&rarr;</div>
+          <div class="progress-item">
+            <div class="progress-info">
+              <div class="icon-box warning-box">❗</div>
+              <span class="progress-label">严重影响</span>
+              <span class="value text-primary">42</span>
+            </div>
+            <div class="progress-bar"><div class="fill primary" style="width: 42%"></div></div>
+          </div>
+          <div class="progress-item">
+            <div class="progress-info">
+              <div class="icon-box safe-box">🧹</div>
+              <span class="progress-label">风气干净</span>
+              <span class="value text-success">94%</span>
+            </div>
+            <div class="progress-bar"><div class="fill success" style="width: 94%"></div></div>
+          </div>
+        </div>
+        <div class="system-notice">
+          "系统正在深度识别垂直游戏领域的黑话体系，当前识别库已更新至 1.24.0 版本。"
         </div>
       </div>
 
+      <div class="engine-section">
+        <div class="mini-cards">
+          <div class="mini-card card">
+            <div class="mini-header"><span>黑话</span> <span class="tag active">ACTIVE</span></div>
+            <h2 class="mini-number">1,402</h2>
+            <p class="sub">今日检出数</p>
+            <div class="mini-chart" ref="miniChart1"></div>
+          </div>
+          <div class="mini-card card">
+            <div class="mini-header"><span>嘲讽</span> <span class="tag danger">OIGO</span></div>
+            <h2 class="mini-number">892</h2>
+            <p class="sub">今日检出数</p>
+            <div class="mini-chart" ref="miniChart2"></div>
+          </div>
+          <div class="mini-card card">
+            <div class="mini-header"><span>阴阳怪气</span> <span class="tag normal">NORMAL</span></div>
+            <h2 class="mini-number">544</h2>
+            <p class="sub">今日检出数</p>
+            <div class="mini-chart" ref="miniChart3"></div>
+          </div>
+        </div>
+
+        <div class="engine-banner">
+          <div class="banner-content">
+            <h2>多模态语义分析引擎</h2>
+            <p>基于自研的深蓝语义大模型，我们能够精准识别隐藏在谐音、缩写以及游戏特定场景下的恶意言论。目前模型准确率已达 99.2%。</p>
+            <div class="banner-actions">
+              <button class="btn-white">查看详细报告</button>
+              <button class="btn-outline">引擎设置</button>
+            </div>
+          </div>
+          <div class="banner-ring">
+            <div class="ring-circle">
+              <span class="ring-score">90</span>
+              <span class="ring-label">SANITY</span>
+            </div>
+          </div>
+          <div class="status-badge"><span class="dot-green"></span> 实时检测已就绪</div>
+        </div>
+      </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as echarts from 'echarts'
 
-const router = useRouter();
+const barChartRef = ref(null)
+const lineChartRef = ref(null)
+const distributionChartRef = ref(null)
+const pieChartRef = ref(null)
+const miniChart1 = ref(null)
+const miniChart2 = ref(null)
+const miniChart3 = ref(null)
 
-// --- 真实状态管理 ---
-const selectedFile = ref(null);
-const videoUrl = ref('');
-const isAnalyzing = ref(false);
-const processLogs = ref([]);
-const analysisResult = ref(null);
-const logContainer = ref(null);
+let charts = []
 
-// 💡 新增：保存刚刚生成的报告 ID
-const latestReportId = ref(null);
-const currentPlayerId = 'admin_test_001'; // 靶场默认测试ID
+const initCharts = () => {
+  // 1. 柱状图 (去掉坐标轴线，纯粹展示数据块)
+  const barChart = echarts.init(barChartRef.value)
+  barChart.setOption({
+    color: ['#8BA3E8'],
+    grid: { top: 20, right: 0, bottom: 0, left: 0 },
+    xAxis: { type: 'category', show: false, data: ['1','2','3','4','5','6','7'] },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      data: [40, 60, 45, 80, 55, 70, 95],
+      type: 'bar',
+      barWidth: '85%',
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#6B8DF2' }, // 顶部稍深的蓝
+          { offset: 1, color: '#C6D6FF' }  // 底部极浅的蓝
+        ])
+      }
+    }]
+  })
+  charts.push(barChart)
 
-// 进度条管理
-const progress = ref(0);
-let progressTimer = null;
+  // 2. 极简平滑折线图
+  const lineChart = echarts.init(lineChartRef.value)
+  lineChart.setOption({
+    grid: { top: 20, right: 10, bottom: 20, left: 10 },
+    xAxis: {
+      type: 'category',
+      data: ['05/18', '05/19', '05/20', '05/21', '05/22', '05/23', '05/24'],
+      axisLine: {show: false},
+      axisTick: {show: false},
+      axisLabel: {color: '#64748B', fontSize: 12}
+    },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      data: [10, 20, 15, 60, 10, 80, 30],
+      type: 'line',
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { color: '#64748B', width: 2 }
+    }]
+  })
+  charts.push(lineChart)
 
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    selectedFile.value = file;
-    videoUrl.value = URL.createObjectURL(file);
-    processLogs.value = [];
-    analysisResult.value = null;
-    latestReportId.value = null;
-    progress.value = 0;
-  }
-};
+  // 3. 绿色细线分布图
+  const distChart = echarts.init(distributionChartRef.value)
+  distChart.setOption({
+    grid: { top: 20, right: 10, bottom: 20, left: 10 },
+    xAxis: {
+      type: 'category',
+      data: ['0','1','2','3','4','5','6','7','8'],
+      axisLine: {lineStyle: {color: '#E2E8F0'}},
+      axisTick: {show: true, lineStyle: {color: '#E2E8F0'}},
+      axisLabel: {color: '#64748B', fontSize: 12}
+    },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      data: [50, 20, 40, 38, 90, 30, 20, 18, 5],
+      type: 'line',
+      symbol: 'none',
+      lineStyle: { color: '#22C55E', width: 1.5 }
+    }]
+  })
+  charts.push(distChart)
 
-const addLog = (msg, type = "info") => {
-  const now = new Date();
-  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-  processLogs.value.push({ time: timeStr, msg, type });
-  nextTick(() => {
-    if (logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight;
-    }
-  });
-};
+  // 4. 清爽饼图
+  const pieChart = echarts.init(pieChartRef.value)
+  pieChart.setOption({
+    color: ['#8BA3E8'],
+    series: [{
+      type: 'pie',
+      radius: ['0%', '70%'],
+      label: { color: '#64748B', fontSize: 12, formatter: '{b}\n{c}' },
+      labelLine: { lineStyle: { color: '#CBD5E1' } },
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      data: [
+        { value: 404, name: '阴阳怪气' },
+        { value: 201, name: '嘲讽' },
+        { value: 195, name: '黑话' }
+      ]
+    }]
+  })
+  charts.push(pieChart)
 
-const simulateProgress = () => {
-  progress.value = 0;
-  progressTimer = setInterval(() => {
-    if (progress.value < 85) {
-      progress.value += Math.floor(Math.random() * 5) + 2;
-    } else if (progress.value < 98) {
-      progress.value += 1;
-    }
-  }, 600);
-};
+  // 5. 底部微型图 (去掉多余元素，只留色块)
+  const miniOptions = (color) => ({
+    grid: { top: 5, right: 0, bottom: 0, left: 0 },
+    xAxis: { type: 'category', show: false, data: ['1','2','3','4','5'] },
+    yAxis: { type: 'value', show: false },
+    series: [{ type: 'bar', data: [3, 4, 3, 5, 2], itemStyle: { color: color }, barWidth: '80%' }]
+  })
 
-const startAnalysis = async () => {
-  if (isAnalyzing.value || !selectedFile.value) return;
+  const m1 = echarts.init(miniChart1.value); m1.setOption(miniOptions('#C6D6FF')); charts.push(m1);
+  const m2 = echarts.init(miniChart2.value); m2.setOption(miniOptions('#FECACA')); charts.push(m2);
+  const m3 = echarts.init(miniChart3.value); m3.setOption(miniOptions('#E2E8F0')); charts.push(m3);
+}
 
-  isAnalyzing.value = true;
-  processLogs.value = [];
-  analysisResult.value = null;
-  latestReportId.value = null;
+onMounted(() => {
+  initCharts()
+  window.addEventListener('resize', () => charts.forEach(c => c.resize()))
+})
 
-  simulateProgress();
-
-  addLog(">>> [系统中枢] 收到指令，开始封包多模态数据...", "info");
-
-  const formData = new FormData();
-  formData.append('video_file', selectedFile.value);
-  formData.append('player_id', currentPlayerId);
-
-  try {
-    addLog(">>> [模块1] 启动 CV+NLP 引擎：向后端发送视频，提取特征流...", "process");
-    addLog(">>> [模块2] 唤醒 GAT 图神经网络：触发全网黑话溯源与拓扑更新...", "process");
-
-    const videoAnalysisPromise = fetch('http://127.0.0.1:8000/api/v1/analyze/video', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const graphAnalysisPromise = fetch('http://127.0.0.1:8000/api/slang/analyze', {
-      method: 'POST',
-    });
-
-    const [videoResponse, graphResponse] = await Promise.all([
-      videoAnalysisPromise,
-      graphAnalysisPromise
-    ]);
-
-    if (!videoResponse.ok || !graphResponse.ok) {
-      throw new Error(`后端引擎崩溃！Video:${videoResponse.status}, Graph:${graphResponse.status}`);
-    }
-
-    const videoData = await videoResponse.json();
-    const graphData = await graphResponse.json();
-
-    if (videoData.status === "success") {
-      addLog(">>> [模块1] OpenCV 帧运算与 BERT 推理完成！数据已入库 SQLite。", "success");
-      analysisResult.value = videoData.result;
-    } else {
-      addLog(`[模块1] 异常：${videoData.message}`, "warn");
-    }
-
-    if (graphData.status === "success") {
-      addLog(">>> [模块2] GAT 溯源图谱已由后端重新计算并覆写！", "success");
-    } else {
-      addLog(`[模块2] 图谱训练异常：${graphData.message}`, "warn");
-    }
-
-    addLog(">>> [模块3] 启动信用评估模型：正在融合多模态特征生成综合信用报告...", "process");
-
-    const textScore = videoData.result?.details?.text_sentiment_prob || 0.1;
-    const behaviorScore = videoData.result?.details?.behavior_anomaly_score || 0.1;
-
-    const reportResponse = await fetch('http://127.0.0.1:8000/api/v1/report/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        player_id: currentPlayerId,
-        text_toxicity: textScore,
-        audio_toxicity: 0.05,
-        behavior_anomaly: behaviorScore,
-        graph_risk: 0.82
-      })
-    });
-
-    const reportData = await reportResponse.json();
-    if (reportData.status === "success") {
-      addLog(">>> [模块3] 玩家专属信用评级报告已生成！", "success");
-      // 💡 保存生成的报告ID，让下载按钮亮起
-      latestReportId.value = reportData.record_id;
-    } else {
-      addLog(`[模块3] 报告生成异常：${reportData.message}`, "warn");
-    }
-
-    clearInterval(progressTimer);
-    progress.value = 100;
-
-  } catch (error) {
-    console.error(error);
-    clearInterval(progressTimer);
-    addLog(`前端总线异常：${error.message}`, "warn");
-  } finally {
-    setTimeout(() => {
-      isAnalyzing.value = false;
-      progress.value = 0;
-    }, 800);
-  }
-};
-
-// 💡 新增：触发下载逻辑
-const downloadReport = () => {
-  if (latestReportId.value) {
-    // 创建一个隐藏的 a 标签触发下载，避免被浏览器当作恶意弹窗拦截
-    const link = document.createElement('a');
-    link.href = `http://127.0.0.1:8000/api/v1/report/download/${latestReportId.value}`;
-    link.setAttribute('download', ''); // 提示浏览器这是下载请求
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-};
-
-// 💡 新增：携带参数跳转信用页，实现“有意义的跳转”
-const jumpToCredit = () => {
-  router.push({ path: '/credit', query: { id: currentPlayerId } });
-};
-
-const formatScore = (val) => {
-  return typeof val === 'number' ? val.toFixed(4) : val;
-};
-
-const rawModules = [
-  { icon: '🕸️', title: '风险溯源拓扑', desc: '利用GAT图神经网络找出污染源与传播路径', route: '/trace' },
-  { icon: '🛡️', title: '跨平台信用评级', desc: '异构数据打分，生成用户综合游戏信用画像', route: '/credit' },
-  { icon: '🎭', title: '阴阳怪气分析', desc: '调用 NLP 引擎深度识别隐藏嘲讽', route: '/detect' },
-  { icon: '🎮', title: '言行不一检测', desc: '比对行为流与文本流，定位异常消极行为', route: '/behavior' }
-];
-
-const processedModules = reactive([...rawModules]);
-const goToModule = (path) => { router.push(path); };
+onUnmounted(() => {
+  charts.forEach(c => c.dispose())
+})
 </script>
 
 <style scoped>
-/* 保持所有样式不变... */
-.dashboard-container { padding: 30px 40px; background-color: #f8fafc; min-height: 100vh; color: #334155; font-family: 'Inter', sans-serif;}
-.dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-.header-left h1 { font-size: 2rem; font-weight: 800; color: #0f172a; margin: 0 0 8px 0; }
-.header-left p { font-size: 0.95rem; color: #64748b; margin: 0; }
-.status-online { color: #10b981; font-weight: 600; }
-.header-right { display: flex; gap: 20px; }
-.stat-badge { background: #ffffff; padding: 12px 24px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); font-size: 0.9rem; color: #64748b; font-weight: 500; }
-.stat-badge span { display: block; font-size: 1.5rem; font-weight: 800; color: #0ea5e9; margin-top: 4px; }
-.stat-badge.alert span { color: #ef4444; }
-.demo-section { background: #ffffff; border-radius: 20px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 40px; }
-.section-title h2 { font-size: 1.5rem; color: #0f172a; margin: 0 0 5px 0; }
-.section-title p { color: #64748b; margin: 0 0 25px 0; }
-.demo-workspace { display: flex; gap: 30px; height: 400px; }
-.upload-area { flex: 1; position: relative; border: 2px dashed #cbd5e1; border-radius: 16px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: all 0.3s ease; }
-.upload-area:hover { border-color: #0ea5e9; background: #e0f2fe; }
-.upload-area.has-file { border: none; background: #e2e8f0; }
-.file-input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
-.upload-placeholder { text-align: center; pointer-events: none; }
-.upload-icon { font-size: 3rem; margin-bottom: 15px; }
-.upload-placeholder h3 { color: #334155; margin: 0 0 5px 0; }
-.video-preview { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
-.preview-player { width: 100%; height: calc(100% - 60px); object-fit: contain; }
-.start-btn { height: 60px; border-radius: 0 0 16px 16px; font-size: 1.1rem; z-index: 11; }
-.analysis-panel { flex: 1; background: #ffffff; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; }
-.panel-header { background: #f8fafc; color: #334155; padding: 12px 20px; font-size: 0.95rem; font-weight: 700; border-bottom: 1px solid #e2e8f0; }
-.log-container { flex: 1; padding: 20px; overflow-y: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.9rem; background: #fdfdfd; }
-.empty-log { color: #94a3b8; text-align: center; margin-top: 50px; }
-.log-item.info .text { color: #64748b; }
-.log-item.process .text { color: #0ea5e9; font-weight: 500;}
-.log-item.warn .text { color: #ea580c; font-weight: bold; }
-.log-item.success .text { color: #10b981; font-weight: bold; }
-.result-summary { padding: 20px; border-top: 1px dashed #cbd5e1; }
-.result-summary h4 { margin: 0 0 10px 0; font-size: 1.05rem; }
-.result-summary .danger { color: #ef4444; }
-.result-summary .success { color: #10b981; }
-.result-tags { display: flex; gap: 10px; margin-bottom: 15px; }
-.tag { padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
-.tag-sarcasm { background: rgba(14, 165, 233, 0.1); color: #0284c7; border: 1px solid #38bdf8; }
-.tag-behavior { background: rgba(245, 158, 11, 0.2); color: #d97706; border: 1px solid #f59e0b; }
-.tag-slang { background: rgba(16, 185, 129, 0.2); color: #059669; border: 1px solid #10b981; }
-.modules-section { margin-top: 20px; }
-.sub-title { font-size: 1.3rem; color: #0f172a; margin-bottom: 20px; }
-.modules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-.module-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; display: flex; align-items: flex-start; gap: 16px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-.module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(14, 165, 233, 0.3); border-color: #bae6fd; }
-.card-icon { font-size: 2rem; background: #f0f9ff; padding: 12px; border-radius: 12px; }
-.card-content h3 { font-size: 1.1rem; color: #0f172a; margin: 0 0 6px 0; }
-.card-content p { font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.4; }
-.card-arrow { margin-left: auto; color: #94a3b8; font-size: 1.2rem; transition: transform 0.2s; }
-.module-card:hover .card-arrow { color: #0ea5e9; transform: translateX(4px); }
-.btn-primary { background: #0ea5e9; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: background 0.2s; }
-.btn-primary:hover:not(:disabled) { background: #0284c7; }
-.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-.btn-text { background: transparent; border: none; color: #38bdf8; cursor: pointer; padding: 0; font-size: 0.9rem; }
-.btn-text:hover { text-decoration: underline; }
-
-.progress-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 0 0 16px 16px;
+/* 全局字体与容器优化 */
+.dashboard-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 0 20px;
-  z-index: 12;
-  backdrop-filter: blur(4px);
+  gap: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #1E293B;
+  background-color: #F8FAFC; /* SVG图背景是极淡的灰白 */
 }
-.progress-text { color: #38bdf8; font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
-.progress-track { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2); border-radius: 4px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #38bdf8); border-radius: 4px; transition: width 0.3s ease-out; box-shadow: 0 0 10px rgba(56, 189, 248, 0.6); }
+
+/* 取消所有硬边框，使用极柔和的超大弥散阴影，这能极大提升精致感 */
+.card, .kpi-card, .chart-card {
+  background: #FFFFFF;
+  border-radius: 12px; /* 圆角统一调大 */
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03); /* 关键：非常柔和的阴影 */
+  border: none;
+}
+
+/* 头部 */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;}
+.page-title { font-size: 24px; font-weight: 600; margin: 0 0 6px 0; letter-spacing: 0.5px;}
+.page-subtitle { color: #64748B; font-size: 14px; margin: 0; }
+.update-time { background: #F1F5F9; color: #475569; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;}
+
+/* --- 核心指标卡片 (精细调整字号和留白) --- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.kpi-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-size: 14px; color: #64748B; font-weight: 500;}
+.icon { font-size: 18px; }
+.blue-icon { color: #3B82F6; }
+.gray-icon { color: #64748B; }
+.red-icon { color: #EF4444; }
+
+.card-body { display: flex; align-items: baseline; gap: 12px; }
+.kpi-number { font-size: 36px; font-weight: 700; margin: 0; line-height: 1; letter-spacing: -0.5px;} /* 放大数字并加粗 */
+.trend { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 2px;}
+.trend.up { color: #3B82F6; }
+.trend.up-danger { color: #EF4444; }
+.trend.down { color: #3B82F6; }
+
+/* 日历卡片特殊处理 */
+.date-group { display: flex; flex-direction: column; gap: 4px; }
+.year-month { font-size: 13px; color: #64748B; }
+.day-row { display: flex; align-items: center; justify-content: space-between; width: 100%;}
+.day-row .kpi-number { font-size: 24px; }
+.arrow-down { color: #3B82F6; font-weight: bold; }
+
+/* --- 图表区 --- */
+.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+.chart-card { padding: 24px; height: 320px; display: flex; flex-direction: column; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.chart-header h3 { font-size: 16px; font-weight: 600; margin: 0; color: #1E293B;}
+.legend-dot { font-size: 12px; color: #64748B; display: flex; align-items: center; gap: 6px;}
+.legend-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.legend-dot.blue::before { background-color: #3B82F6; }
+.legend-dot.dark::before { background-color: #475569; }
+.legend-text { font-size: 12px; color: #64748B; }
+.chart-content { flex: 1; width: 100%; }
+
+/* --- 底部区域 --- */
+.bottom-grid { display: grid; grid-template-columns: 1fr 2.5fr; gap: 24px; }
+
+/* 专项监控数据卡片 */
+.monitor-card { padding: 24px; display: flex; flex-direction: column; }
+.monitor-card h3 { font-size: 16px; font-weight: 600; margin: 0 0 24px 0; }
+.progress-list { display: flex; flex-direction: column; gap: 24px; flex: 1; }
+.progress-item { display: flex; flex-direction: column; gap: 10px; }
+.progress-info { display: flex; align-items: center; font-size: 14px; font-weight: 500;}
+.icon-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 14px;}
+.alert-box { background: #FEE2E2; }
+.warning-box { background: #EFF6FF; }
+.safe-box { background: #DCFCE7; }
+.progress-label { color: #475569; }
+.progress-info .value { margin-left: auto; font-weight: 700; font-size: 16px;}
+.text-danger { color: #EF4444; }
+.text-primary { color: #3B82F6; }
+.text-success { color: #22C55E; }
+.progress-bar { height: 6px; background: #F1F5F9; border-radius: 3px; }
+.progress-bar .fill { height: 100%; border-radius: 3px; }
+.fill.danger { background: #EF4444; }
+.fill.primary { background: #3B82F6; }
+.fill.success { background: #22C55E; }
+.system-notice { margin-top: 24px; font-size: 13px; color: #94A3B8; background: #F8FAFC; padding: 16px; border-radius: 8px; line-height: 1.5; }
+
+/* 右侧引擎区域 */
+.engine-section { display: flex; flex-direction: column; gap: 24px; }
+.mini-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.mini-card { padding: 20px; display: flex; flex-direction: column;}
+.mini-header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 16px; font-weight: 500; color: #1E293B;}
+.tag { font-size: 10px; padding: 4px 8px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px;}
+.tag.active { background: #EFF6FF; color: #2563EB; }
+.tag.danger { background: #FEF2F2; color: #DC2626; }
+.tag.normal { background: #F1F5F9; color: #64748B; }
+.mini-number { font-size: 28px; font-weight: 700; margin: 0; }
+.mini-card .sub { font-size: 12px; color: #94A3B8; margin: 4px 0 16px 0; }
+.mini-chart { height: 40px; width: 100%; margin-top: auto;}
+
+/* 炫酷的多模态引擎蓝色大横幅 */
+.engine-banner {
+  background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%); /* 非常纯正的深蓝到亮蓝渐变 */
+  color: #fff;
+  border-radius: 16px;
+  padding: 32px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2); /* 蓝色发光阴影 */
+}
+.banner-content { max-width: 55%; z-index: 2; }
+.banner-content h2 { font-size: 22px; margin: 0 0 12px 0; font-weight: 600;}
+.banner-content p { font-size: 14px; color: #DBEAFE; line-height: 1.6; margin: 0 0 24px 0; font-weight: 300;}
+.banner-actions { display: flex; gap: 16px; }
+.btn-white { background: #ffffff; color: #1D4ED8; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+.btn-outline { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 10px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+
+.banner-ring { z-index: 2; margin-right: 60px; }
+.ring-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 8px solid rgba(255,255,255,0.2);
+  border-top-color: #ffffff; /* 模拟90%进度的白色缺口环 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ring-score { font-size: 36px; font-weight: 700; line-height: 1;}
+.ring-label { font-size: 12px; color: #DBEAFE; margin-top: 4px; letter-spacing: 1px;}
+
+.status-badge {
+  position: absolute;
+  bottom: -16px;
+  right: 40px;
+  background: #ffffff;
+  color: #1E293B;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.dot-green { width: 8px; height: 8px; background: #22C55E; border-radius: 50%; }
 </style>
