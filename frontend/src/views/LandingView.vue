@@ -1,533 +1,320 @@
 <template>
-  <div class="landing-container" @mousemove="handleMouseMove">
-    <div class="top-nav">
-      <div class="logo-text">Deep Blue AI</div>
-      <button class="login-btn" @click="goToLogin">
-        <span>控制台登录</span>
-        <div class="btn-glow"></div>
-      </button>
-    </div>
-
+  <div class="landing-container">
     <section class="hero-section">
-      <div class="bg-title-wrapper" :style="titleTransform">
-        <h1 class="massive-title">深蓝卫士</h1>
-        <p class="massive-subtitle">多模态网络游戏生态健康度监测与信用评级平台</p>
+      <div class="hero-content">
+        <p class="subtitle">专业级净化平台</p>
+        <h1 class="title">游戏网络环境净化平台</h1>
+        <p class="desc">
+          打造纯净网络环境。采用下一代 AI 技术，多维度精准识别违规行为，守护游戏生态安全，构建文明健康的数字化娱乐空间。
+        </p>
+        <div class="action-buttons">
+          <button class="btn-primary" @click="$router.push('/dashboard')">开始体验</button>
+          <button class="btn-outline">了解更多</button>
+        </div>
       </div>
-
-      <div ref="bubbleChart" class="bubble-container" :style="bubbleTransform"></div>
-
-      <div class="scroll-indicator">
-        <div class="mouse"></div>
-        <span>探索净化链路</span>
+      <div class="hero-illustration">
+        <div class="mock-window">
+          <div class="window-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot blue"></span>
+            <svg class="icon-shield text-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="window-body">
+            <div class="skeleton-line long"></div>
+            <div class="skeleton-line medium"></div>
+            <div class="skeleton-line short"></div>
+            <svg class="shield-big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+        </div>
       </div>
     </section>
 
-    <div class="story-wrapper">
-      <section
-        v-for="(section, index) in storySections"
-        :key="index"
-        :class="`story-section section-${index}`"
-        ref="sectionRefs"
-      >
-        <div class="glass-panel" :class="{ 'reverse': index % 2 !== 0 }">
-          <div class="panel-content">
-            <div class="tag-label">{{ section.tag }}</div>
-            <h2 class="section-title">{{ section.title }}</h2>
-            <p class="section-desc">{{ section.desc }}</p>
-            <ul class="tech-list">
-              <li v-for="(tech, tIndex) in section.techs" :key="tIndex">{{ tech }}</li>
-            </ul>
+    <section class="defense-section">
+      <div class="defense-text">
+        <div class="section-tag">
+          <span class="blue-dot"></span> 平台实时监控
+        </div>
+        <h2>全时段主动防御系统</h2>
+        <p>深蓝卫士提供毫秒级的实时流量扫描与行为建模，在违规内容传播前实现精准拦截。我们的系统不仅关注文本语义，更深度集成多模态分析技术，能够有效识别图像、语音及各类变体符号中的违规倾向。</p>
+        <p>依托自研的深度神经网络，平台可以实现 24/7 无间断监测，自动生成实时风险趋势图，帮助管理人员快速定位网络污染源，确保社区氛围的持续净化与健康发展。</p>
+      </div>
+
+      <div class="defense-stats">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <h3>99.9%</h3>
+            <p>拦截准确率</p>
           </div>
-          <div class="panel-visual">
-             <div class="visual-placeholder">{{ section.visualText }}</div>
+          <div class="stat-item">
+            <h3>15ms</h3>
+            <p>平均响应速度</p>
+          </div>
+          <div class="stat-item">
+            <h3>1.2B</h3>
+            <p>日均处理请求</p>
+          </div>
+          <div class="stat-item">
+            <h3>24h</h3>
+            <p>实时智能轮巡</p>
           </div>
         </div>
-      </section>
-    </div>
+        <div class="mock-bar-chart">
+          <div class="bar" style="height: 30%;"></div>
+          <div class="bar" style="height: 50%;"></div>
+          <div class="bar highlight" style="height: 80%;"></div>
+          <div class="bar" style="height: 40%;"></div>
+          <div class="bar" style="height: 60%;"></div>
+          <div class="bar" style="height: 45%;"></div>
+          <div class="bar" style="height: 30%;"></div>
+          <div class="bar" style="height: 70%;"></div>
+          <div class="bar highlight" style="height: 90%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="modules-section">
+      <div class="modules-header">
+        <h2>核心功能模块</h2>
+        <p>整合尖端 AI 能力，提供全链路安全治理方案</p>
+      </div>
+
+      <div class="modules-grid">
+        <div class="module-card" @click="$router.push('/monitor')">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>实时监控</h3>
+          <p>毫秒级数据流分析，实时捕获异常动态与违规交互，确保安全无死角。</p>
+          <a class="explore-link">立即探索 →</a>
+        </div>
+
+        <div class="module-card" @click="$router.push('/detect')">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </div>
+          <h3>毒性分析</h3>
+          <p>深度语义解析，识别隐晦恶意言论、仇恨词汇及其各种变体形态。</p>
+          <a class="explore-link">立即探索 →</a>
+        </div>
+
+        <div class="module-card" @click="$router.push('/trace')">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </div>
+          <h3>风险溯源拓扑</h3>
+          <p>追溯恶意行为的传播链条与源头，构建全链路风险影响拓扑图谱。</p>
+          <a class="explore-link">立即探索 →</a>
+        </div>
+
+        <div class="module-card" @click="$router.push('/label')">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <h3>对抗数据标注</h3>
+          <p>利用主动学习机制，针对新型对抗攻击进行高效样本标注与模型迭代。</p>
+          <a class="explore-link">立即探索 →</a>
+        </div>
+      </div>
+    </section>
+
+    <footer class="landing-footer">
+      <div class="footer-left">
+        <span class="footer-logo">深蓝卫士</span>
+        <span class="copyright">© 2024 深蓝卫士 - 网络环境净化领导者</span>
+      </div>
+      <div class="footer-links">
+        <a>服务条款</a>
+        <a>隐私政策</a>
+        <a>联系我们</a>
+      </div>
+      <div class="footer-icons">
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
+      </div>
+    </footer>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, reactive, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import * as d3 from 'd3';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
-const router = useRouter();
-
-// --- 鼠标视差交互逻辑 ---
-const mousePos = reactive({ x: 0, y: 0 });
-const handleMouseMove = (e) => {
-  // 计算鼠标相对屏幕中心的偏移量，范围大致在 -1 到 1 之间
-  const x = (e.clientX / window.innerWidth) * 2 - 1;
-  const y = (e.clientY / window.innerHeight) * 2 - 1;
-  mousePos.x = x;
-  mousePos.y = y;
-};
-
-// 标题和气泡采用不同速率的反向移动，形成 3D 景深
-const titleTransform = computed(() => {
-  return `transform: translate(${mousePos.x * -30}px, ${mousePos.y * -20}px)`;
-});
-const bubbleTransform = computed(() => {
-  return `transform: translate(${mousePos.x * 40}px, ${mousePos.y * 30}px)`;
-});
-
-// --- 页面内容数据 (严格对标 PDF) ---
-const storySections = [
-  {
-    tag: '核心引擎', title: '首创多模态分析净化平台', desc: '聚焦复杂游戏环境，将“关系流+文本流+行为流”深度融合，打破传统单一文本检测瓶颈，精准打击隐蔽违规行为。', techs: ['XGBoost 决策融合', '跨流特征提取'], visualText: '多模态融合模型图'
-  },
- {
-    tag: '语义解析', title: '阴阳怪气与网络黑话', desc: '面向游戏特色交流体系，结合情感与黑话词库，综合剥离语言毒性，精准识别暗语和嘲讽。', techs: ['BERT 语义理解', 'Wav2Vec2 情绪识别'], visualText: '毒性文本过滤演示'
-  },
-  {
-    tag: '图谱追踪', title: '风险溯源拓扑图', desc: '找出谁先开始的，谁的“污染”最大。通过复杂的图神经网络，追踪社交关系链和攻击传播路径。', techs: ['GAT 图注意力网络', '传播路径计算'], visualText: '关系溯源动态图'
-  },
-  {
-    tag: '信用体系', title: '跨平台用户信用评分', desc: '构建专属于深蓝卫士的复杂异构大数据样本集，综合生成用户总体的游戏信用画像，提供行业接入标准。', techs: ['LSTM 异常检测', '多维数据打分模型'], visualText: '六边形信用雷达图'
-  }
-];
-
-const sectionRefs = ref([]);
-const bubbleChart = ref(null);
-
-const goToLogin = () => {
-  router.push('/login');
-};
-
-// --- D3 气泡数据 (已去重并设置中心跳转) ---
-const bubbleDataTree = {
-  // 修改中心节点：设置 route 为 /dashboard
-  id: 'core', radius: 110, label: '多模态融合核心', desc: '进入控制台', type: 'center', route: '/dashboard',
-  children: [
-    { id: 'trace', radius: 85, label: '风险溯源', desc: '找出污染源', type: 'feature', route: '/trace' },
-    { id: 'credit', radius: 85, label: '信用评级', desc: '跨平台打分', type: 'feature', route: '/credit' },
-    { id: 'sarcasm', radius: 75, label: '情感剥离', desc: '阴阳怪气检测', type: 'feature', route: '/detect' },
-    { id: 'slang', radius: 75, label: '对抗词库', desc: '网络黑话解析', type: 'feature', route: '/label' },
-    // 仅保留一个异常定位（言行不一）节点，指向新创建的路由
-    { id: 'behavior', radius: 75, label: '言行不一', desc: '异常行为定位', type: 'feature', route: '/behavior' }
-  ]
-};
-
-const flattenNodes = (root) => {
-  const nodes = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (current) {
-      nodes.push({ ...current, r: current.radius });
-      if (current.children?.length > 0) {
-        let i = current.children.length - 1;
-        while (i >= 0) {
-          stack.push(current.children[i]);
-          i--;
-        }
-      }
-    }
-  }
-  return nodes;
-};
-
-let simulation;
-let timer;
-
-const initBubbleChart = () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const nodes = flattenNodes(bubbleDataTree);
-  const featureNodes = nodes.filter(n => n.type === 'feature');
-
-  let idx = 0;
-  while (idx < featureNodes.length) {
-    const node = featureNodes[idx];
-    const angle = (Math.PI * 2 * idx) / featureNodes.length;
-    const spreadRadius = Math.min(width, height) * 0.26;
-    node.x = width / 2 + Math.cos(angle) * spreadRadius;
-    node.y = height / 2 + Math.sin(angle) * spreadRadius;
-    idx++;
-  }
-
-  const centerNode = nodes.find(n => n.type === 'center');
-  if (centerNode) {
-    centerNode.x = width / 2;
-    centerNode.y = height / 2;
-  }
-
-  d3.select(bubbleChart.value).selectAll('*').remove();
-  const svg = d3.select(bubbleChart.value).append('svg').attr('width', width).attr('height', height);
-
-  // 强化物理引擎：增加向中心的聚拢力和节点间的弹性碰撞
-  simulation = d3.forceSimulation(nodes)
-    .force('charge', d3.forceManyBody().strength(-150)) // 适当的排斥力
-    .force('charge', d3.forceManyBody().strength(-250)) // 增强排斥力，让布局更松弛
-    .force('center', d3.forceCenter(width / 2, height / 2 - 30))
-    .force('collide', d3.forceCollide().radius(d => d.r + 8).iterations(4))
-    .force('collide', d3.forceCollide().radius(d => d.r + 24).iterations(4))
-    .force('radial', d3.forceRadial(d => d.type === 'center' ? 0 : Math.min(width, height) * 0.23, width / 2, height / 2).strength(0.16))
-    .force('y', d3.forceY(height / 2).strength(0.05)) // 增加 Y 轴维稳力
-    .force('x', d3.forceX(width / 2).strength(0.05)); // 增加 X 轴维稳力
-
-  const nodeGroups = svg.selectAll('.node')
-    .data(nodes).enter().append('g').attr('class', 'node')
-    .call(d3.drag()
-      .on('start', dragstarted)
-      .on('drag', dragged)
-      .on('end', dragended))
-    .on('click', (event, d) => {
-      // 【核心修复】：防止拖拽结束后触发点击跳转
-      if (event.defaultPrevented) return;
-
-      // 触发路由跳转
-      if (d.route) {
-        router.push(d.route);
-      }
-    });
-
-  // 渲染玻璃质感的气泡
-  nodeGroups.append('circle')
-    .attr('r', d => d.r)
-    .style('fill', d => d.type === 'center' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(240, 248, 255, 0.6)')
-    .style('stroke', d => d.type === 'center' ? '#0ea5e9' : '#bae6fd')
-    .style('stroke-width', 2)
-    .style('box-shadow', '0 10px 25px rgba(14, 165, 233, 0.2)')
-    .style('cursor', 'pointer');
-
-  nodeGroups.append('text')
-    .text(d => d.label)
-    .attr('text-anchor', 'middle').attr('dy', '-0.2em')
-    .style('fill', '#0f172a').style('font-size', d => d.r / 3.8 + 'px').style('font-weight', '800')
-    .style('pointer-events', 'none');
-
-  nodeGroups.append('text')
-    .text(d => d.desc)
-    .attr('text-anchor', 'middle').attr('dy', '1.6em')
-    .style('fill', '#475569').style('font-size', d => d.r / 6 + 'px').style('font-weight', '600')
-
-  // 【核心修复】：让气泡出场时产生强烈的弹跳感
-  simulation.alpha(1).restart();
-
-  simulation.on('tick', () => {
-    // 限制气泡不飞出屏幕边界
-    let i = 0;
-    while(i < nodes.length) {
-      let d = nodes[i];
-      d.x = Math.max(d.r, Math.min(width - d.r, d.x));
-      d.y = Math.max(d.r, Math.min(height - d.r, d.y));
-      i++;
-    }
-  });
-
-  // 持续的呼吸漂浮效果
-  timer = d3.timer((elapsed) => {
-    nodeGroups.attr('transform', d => {
-      const floatY = Math.sin(elapsed * 0.002 + d.id.charCodeAt(0)) * 5;
-      return `translate(${d.x},${d.y + floatY})`;
-    });
-  });
-
-  // 拖拽逻辑完善
-  function dragstarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
-  function dragged(event, d) {
-    d.fx = event.x;
-    d.fy = event.y;
-  }
-  function dragended(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
-};
-
-// --- GSAP 滚动动画初始化 ---
-const initScrollAnimations = () => {
-  const sections = sectionRefs.value;
-  let i = 0;
-
-  // 使用 while 循环逐个绑定滚动触发器
-  while (i < sections.length) {
-    const el = sections[i];
-    const isReverse = i % 2 !== 0;
-
-    gsap.fromTo(el,
-      { opacity: 0, x: isReverse ? 100 : -100, y: 50 },
-      {
-        opacity: 1, x: 0, y: 0,
-        duration: 1.2,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: el,
-          start: "top 75%",
-          end: "center center",
-          toggleActions: "play none none reverse"
-        }
-      }
-    );
-    i++;
-  }
-};
-
-onMounted(() => {
-  initBubbleChart();
-  // 等待 DOM 渲染完成后初始化 GSAP
-  setTimeout(initScrollAnimations, 100);
-  window.addEventListener('resize', initBubbleChart);
-});
-
-onUnmounted(() => {
-  if (simulation) simulation.stop();
-  if (timer) timer.stop();
-  window.removeEventListener('resize', initBubbleChart);
-  ScrollTrigger.getAll().forEach(t => t.kill());
-});
-</script>
-
 <style scoped>
-/* 极光弥散光背景 */
 .landing-container {
-  width: 100vw;
-  min-height: 100vh;
-  background-color: #f8fafc;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(99, 102, 241, 0.1) 0px, transparent 50%);
-  color: #0f172a;
-  font-family: 'Inter', -apple-system, sans-serif;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin: -24px; /* 抵消 Layout 中 default padding */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-/* 顶部导航与登录按钮 */
-.top-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  padding: 24px 48px;
+/* 1. Hero 区域 */
+.hero-section {
+  background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
+  border-radius: 0 0 24px 24px;
+  padding: 80px 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 100;
-  box-sizing: border-box;
+  color: #ffffff;
 }
-
-.logo-text {
-  font-size: 1.5rem;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: #0ea5e9;
+.hero-content {
+  max-width: 50%;
 }
-
-.login-btn {
-  position: relative;
-  padding: 12px 32px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  border-radius: 30px;
-  color: #0284c7;
+.hero-content .subtitle {
+  font-size: 13px;
+  letter-spacing: 2px;
+  opacity: 0.8;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+.hero-content .title {
+  font-size: 48px;
   font-weight: 700;
-  font-size: 1rem;
+  margin: 0 0 24px 0;
+  line-height: 1.2;
+}
+.hero-content .desc {
+  font-size: 16px;
+  line-height: 1.6;
+  opacity: 0.9;
+  margin-bottom: 40px;
+}
+.action-buttons {
+  display: flex;
+  gap: 16px;
+}
+.btn-primary {
+  background: #ffffff;
+  color: #1D4ED8;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s;
 }
-
-.login-btn:hover {
-  background: #0ea5e9;
-  color: #fff;
+.btn-primary:hover {
+  background: #F8FAFC;
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.3);
+}
+.btn-outline {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* 视差交互区 */
-.hero-section {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
+.hero-illustration {
+  width: 40%;
+}
+.mock-window {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+.window-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  gap: 8px;
 }
-
-/* 融合在背景中的超大标题 */
-.bg-title-wrapper {
-  position: absolute;
-  text-align: center;
-  z-index: 1; /* 在气泡下方 */
-  pointer-events: none; /* 防止遮挡气泡的鼠标事件 */
-  transition: transform 0.1s linear; /* 配合鼠标平滑移动 */
-}
-
-.massive-title {
-  font-size: 12vw;
-  font-weight: 900;
-  line-height: 1;
-  margin: 0;
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
-}
-
-.massive-subtitle {
-  font-size: 1.5rem;
-  color: rgba(71, 85, 105, 0.6);
-  font-weight: 600;
-  margin-top: -20px;
-}
-
-/* 气泡层 */
-.bubble-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2; /* 在标题上方 */
-  transition: transform 0.1s linear;
-}
-
-/* 滚动提示 */
-.scroll-indicator {
-  position: absolute;
-  bottom: 40px;
-  z-index: 10;
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.red { background: #EF4444; }
+.dot.yellow { background: #F59E0B; }
+.dot.blue { background: #3B82F6; }
+.icon-shield { width: 16px; height: 16px; opacity: 0.7; }
+.text-right { margin-left: auto; }
+.window-body {
+  padding: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #64748b;
-  font-weight: 500;
-  gap: 12px;
+  gap: 16px;
 }
+.skeleton-line { height: 12px; background: rgba(255, 255, 255, 0.2); border-radius: 6px; width: 100%;}
+.skeleton-line.long { width: 90%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.short { width: 50%; }
+.shield-big { width: 80px; height: 80px; margin-top: 24px; opacity: 0.8; color: #fff;}
 
-.mouse {
-  width: 26px;
-  height: 40px;
-  border: 2px solid #94a3b8;
-  border-radius: 14px;
-  position: relative;
-}
-.mouse::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 8px;
-  background: #94a3b8;
-  border-radius: 2px;
-  animation: scrollAnim 1.5s infinite;
-}
-
-@keyframes scrollAnim {
-  0% { transform: translate(-50%, 0); opacity: 1; }
-  100% { transform: translate(-50%, 15px); opacity: 0; }
-}
-
-/* 下拉内容区 */
-.story-wrapper {
-  position: relative;
-  z-index: 5;
-  padding: 100px 0;
-}
-
-.story-section {
-  min-height: 70vh;
+/* 2. 防御系统区域 */
+.defense-section {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 10%;
-}
-
-.glass-panel {
-  display: flex;
-  align-items: center;
+  padding: 40px 60px;
   gap: 60px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 40px;
-  padding: 60px;
-  width: 100%;
-  max-width: 1200px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+  align-items: center;
 }
-
-.glass-panel.reverse {
-  flex-direction: row-reverse;
-}
-
-.panel-content {
-  flex: 1;
-}
-
-.tag-label {
-  display: inline-block;
-  padding: 6px 16px;
-  background: #e0f2fe;
-  color: #0284c7;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-size: 2.8rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 24px;
-  line-height: 1.2;
-}
-
-.section-desc {
-  font-size: 1.15rem;
-  color: #475569;
-  line-height: 1.7;
-  margin-bottom: 32px;
-}
-
-.tech-list {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 15px;
-}
-
-.tech-list li {
-  background: #f1f5f9;
-  color: #334155;
-  padding: 8px 16px;
-  border-radius: 12px;
+.defense-text { flex: 1; }
+.section-tag {
+  color: #2563EB;
+  font-size: 14px;
   font-weight: 600;
-  font-size: 0.95rem;
-  border: 1px solid #e2e8f0;
-}
-
-.panel-visual {
-  flex: 1;
-  height: 400px;
-  background: linear-gradient(135deg, rgba(241, 245, 249, 0.8), rgba(226, 232, 240, 0.8));
-  border-radius: 30px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px dashed #cbd5e1;
+  gap: 8px;
+  margin-bottom: 16px;
 }
+.blue-dot { width: 8px; height: 8px; background: #2563EB; border-radius: 50%; }
+.defense-text h2 { font-size: 32px; margin: 0 0 24px 0; color: #1E293B; font-weight: 600; }
+.defense-text p { font-size: 15px; color: #475569; line-height: 1.8; margin-bottom: 16px; }
 
-.visual-placeholder {
-  color: #94a3b8;
-  font-weight: 600;
-  font-size: 1.2rem;
+.defense-stats { flex: 1; background: #fff; border-radius: 16px; padding: 30px; box-shadow: 0 4px 24px rgba(0,0,0,0.03); border: 1px solid #F1F5F9;}
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center; margin-bottom: 30px; }
+.stat-item h3 { font-size: 24px; color: #1D4ED8; margin: 0 0 8px 0; font-weight: 700;}
+.stat-item p { font-size: 12px; color: #64748B; margin: 0; }
+.mock-bar-chart { display: flex; align-items: flex-end; justify-content: space-between; height: 120px; gap: 4px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px;}
+.mock-bar-chart .bar { flex: 1; background: #E2E8F0; border-radius: 4px 4px 0 0; transition: height 0.3s;}
+.mock-bar-chart .bar.highlight { background: #2563EB; }
+
+/* 3. 核心功能模块 */
+.modules-section { padding: 40px 60px 80px 60px; background: #F8FAFC; }
+.modules-header { text-align: center; margin-bottom: 40px; }
+.modules-header h2 { font-size: 28px; color: #1E293B; margin: 0 0 12px 0; font-weight: 600;}
+.modules-header p { color: #64748B; font-size: 15px; margin: 0; }
+.modules-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.module-card {
+  background: #ffffff;
+  padding: 30px 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.02);
+  border: 1px solid #F1F5F9;
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
+.module-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.06); border-color: #DBEAFE; }
+.icon-box { width: 48px; height: 48px; background: #EFF6FF; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #2563EB; }
+.icon-box svg { width: 24px; height: 24px; }
+.module-card h3 { font-size: 18px; margin: 0 0 12px 0; color: #1E293B; font-weight: 600;}
+.module-card p { font-size: 13px; color: #64748B; line-height: 1.6; flex: 1; margin: 0 0 20px 0; }
+.explore-link { color: #2563EB; text-decoration: none; font-size: 14px; font-weight: 500; }
+
+/* 4. 页脚 */
+.landing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 60px;
+  background: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+  color: #64748B;
+  font-size: 13px;
+}
+.footer-left { display: flex; align-items: center; gap: 16px; }
+.footer-logo { color: #2563EB; font-size: 18px; font-weight: bold; }
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { color: #64748B; cursor: pointer; }
+.footer-links a:hover { color: #2563EB; }
+.footer-icons { display: flex; gap: 12px; }
+.icon-btn { background: #fff; border: 1px solid #E2E8F0; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748B;}
 </style>

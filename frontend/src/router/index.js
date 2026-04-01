@@ -1,70 +1,22 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import TextDetectionView from '@/views/TextDetectionView.vue'
+import Layout from '../views/Layout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // --- 独立全屏视图 ---
     {
       path: '/',
-      name: 'landing',
-      component: () => import('../views/LandingView.vue'),
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/Login.vue'),
-    },
-
-    // --- 包含系统导航栏/侧边栏的业务视图 ---
-    {
-      path: '/systemRoot',
-      component: () => import('../views/Layout.vue'),
+      component: Layout,
       children: [
-        {
-          path: '/dashboard',
-          name: 'dashboard',
-          component: () => import('../views/Dashboard.vue'),
-        },
-        {
-          path: '/trace',
-          name: 'trace',
-          component: () => import('../views/Trace.vue'),
-        },
-        {
-          path: '/detect',
-          name: 'detect',
-          component: () => import('../views/Detect.vue'),
-        },
-        {
-          path: '/credit',
-          name: 'credit',
-          component: () => import('../views/Credit.vue'),
-        },
-        {
-          path: '/label',
-          name: 'label',
-          component: () => import('../views/Label.vue'),
-        },
-        // 👇 就是这里！确保它 import 的是 Behavior.vue，而不是 Dashboard.vue
-        {
-          path: '/behavior',
-          name: 'behavior',
-          component: () => import('../views/Behavior.vue'),
-        },
-        {
-          path: '/text-detection',
-          name: 'TextDetection',
-          component: TextDetectionView
-        },
-        {
-          path: '/about',
-          name: 'about',
-          component: () => import('../views/AboutView.vue'),
-        }
+        { path: '', name: 'intro', component: () => import('../views/LandingView.vue'), meta: { title: '介绍导入' } },
+        { path: 'dashboard', name: 'dashboard', component: () => import('../views/DashboardView.vue'), meta: { title: '总览台' } },
+        { path: 'detect', name: 'detect', component: () => import('../views/TextDetectionView.vue'), meta: { title: '多模态毒性检测' } }, // <--- 就是这里漏了逗号！
+        { path: 'monitor', name: 'monitor', component: () => import('../views/MonitorView.vue'), meta: { title: '实时监测' } },
+        { path: 'trace', name: 'trace', component: () => import('../views/RiskTraceView.vue'), meta: { title: '风险溯源拓扑' } },
+        { path: 'label', name: 'label', component: () => import('../views/DataLabelingView.vue'), meta: { title: '对抗数据标注' } }
       ]
     }
-  ],
+  ]
 })
-
 export default router

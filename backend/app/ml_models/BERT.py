@@ -1,6 +1,40 @@
 """PyTorch BERT model. """
 
+import sys
+import types
 
+# 1. 修复消失的 swish 函数
+def swish_function(x):
+    return x * torch.sigmoid(x)
+import transformers.activations
+setattr(transformers.activations, "swish", swish_function)
+
+# 2. 修复模块路径映射 (针对 configuration_bert)
+try:
+    import transformers.models.bert.configuration_bert as bert_config
+    sys.modules['transformers.configuration_bert'] = bert_config
+except ImportError:
+    pass
+
+# 3. 🚨 核心修复：针对 file_utils 及装饰器的“深度欺骗” 🚨
+# 因为旧代码用了大量的文档装饰器，我们直接创建一个“全能模拟模块”注入系统
+mock_file_utils = types.ModuleType("file_utils")
+
+# 定义“无作用”装饰器（它们只负责把函数原封不动返回，保证逻辑不改，且不报 ImportError）
+def dummy_decorator(*args, **kwargs):
+    def wrapper(obj):
+        return obj
+    return wrapper
+
+# 补全 BERT.py 中报错的所有缺失名称
+mock_file_utils.add_start_docstrings = dummy_decorator
+mock_file_utils.add_start_docstrings_to_callable = dummy_decorator
+mock_file_utils.add_code_sample_docstrings = dummy_decorator
+mock_file_utils.add_start_docstrings_to_model_forward = dummy_decorator
+mock_file_utils.replace_return_docstrings = dummy_decorator
+
+# 将这个模拟模块强行注入系统路径，彻底解决 file_utils 导入问题
+sys.modules['transformers.file_utils'] = mock_file_utils
 import logging
 import math
 import os
