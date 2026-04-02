@@ -5,7 +5,7 @@
         <p class="subtitle">专业级净化平台</p>
         <h1 class="title">游戏网络环境净化平台</h1>
         <p class="desc">
-          打造纯净网络环境。采用下一代 AI 技术，多维度精准识别违规行为，守护游戏生态安全，构建文明健康的数字化娱乐空间。
+          响应“十五五“规划，打造纯净网络环境。多维度精准识别违规行为，守护游戏生态安全，构建文明健康的数字化娱乐空间。
         </p>
         <div class="action-buttons">
           <button class="btn-primary" @click="$router.push('/dashboard')">开始体验</button>
@@ -36,7 +36,7 @@
           <span class="blue-dot"></span> 平台实时监控
         </div>
         <h2>全时段主动防御系统</h2>
-        <p>深蓝卫士提供毫秒级的实时流量扫描与行为建模，在违规内容传播前实现精准拦截。我们的系统不仅关注文本语义，更深度集成多模态分析技术，能够有效识别图像、语音及各类变体符号中的违规倾向。</p>
+        <p>深蓝卫士提供接口，可达成毫秒级的实时流量扫描与行为建模，精准识别违规内容。我们的系统不仅关注文本语义，更深度集成多模态分析技术，能够有效识别图像、语音及各类变体符号中的违规倾向。</p>
         <p>依托自研的深度神经网络，平台可以实现 24/7 无间断监测，自动生成实时风险趋势图，帮助管理人员快速定位网络污染源，确保社区氛围的持续净化与健康发展。</p>
       </div>
 
@@ -121,7 +121,7 @@
     <footer class="landing-footer">
       <div class="footer-left">
         <span class="footer-logo">深蓝卫士</span>
-        <span class="copyright">© 2024 深蓝卫士 - 网络环境净化领导者</span>
+        <span class="copyright">© 2026 深蓝卫士 - 网络环境净化领导者</span>
       </div>
       <div class="footer-links">
         <a>服务条款</a>

@@ -2,13 +2,13 @@
   <div class="dashboard-container">
     <header class="page-header">
       <div class="header-left">
-        <h1 class="page-title">数据总览台</h1>
-        <p class="page-subtitle">欢迎回来。系统正在实时净化游戏网络环境，当前运行状态良好。</p>
+        <h1 class="page-title">2026 深蓝卫士 - 数据总览台</h1>
+        <p class="page-subtitle">基于多模态博弈大数据的网络游戏生态健康度监测与信用评级平台。引擎全时段主动防御中。</p>
       </div>
       <div class="header-right text-secondary">
         <span class="update-time">
           <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          最后更新: 2024-05-24 14:30:22
+          最后更新: {{ formattedUpdateTime }}
         </span>
       </div>
     </header>
@@ -20,8 +20,8 @@
           <svg class="icon blue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4m-2-2v4m10-2h.01M16 10h.01"/></svg>
         </div>
         <div class="card-body">
-          <h2 class="kpi-number">12,842</h2>
-          <span class="trend up">↗ 4.2%</span>
+          <h2 class="kpi-number">12,450</h2>
+          <span class="trend up">↗ 5.2%</span>
         </div>
       </div>
       <div class="kpi-card">
@@ -46,14 +46,14 @@
       </div>
       <div class="kpi-card">
         <div class="card-header">
-          <span class="card-title">日历</span>
+          <span class="card-title">系统日历</span>
           <svg class="icon blue-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
         <div class="card-body">
           <div class="date-group">
-            <span class="year-month">2024年5月</span>
+            <span class="year-month">{{ currentYearMonth }}</span>
             <div class="day-row">
-              <h2 class="kpi-number">24日 星期五</h2>
+              <h2 class="kpi-number">{{ currentDayInfo }}</h2>
               <span class="arrow-down">˅</span>
             </div>
           </div>
@@ -85,7 +85,7 @@
       </div>
       <div class="chart-card">
         <div class="chart-header">
-          <h3>游戏中各类风险言论占比</h3>
+          <h3>复杂语境下违规类型占比</h3>
         </div>
         <div class="chart-content" ref="pieChartRef"></div>
       </div>
@@ -98,7 +98,7 @@
           <div class="progress-item">
             <div class="progress-info">
               <div class="icon-box alert-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-              <span class="progress-label">场次预警</span>
+              <span class="progress-label">溯源高危预警</span>
               <span class="value text-danger">18</span>
             </div>
             <div class="progress-bar"><div class="fill danger" style="width: 18%"></div></div>
@@ -106,7 +106,7 @@
           <div class="progress-item">
             <div class="progress-info">
               <div class="icon-box warning-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-              <span class="progress-label">严重影响</span>
+              <span class="progress-label">行为异常波动</span>
               <span class="value text-primary">42</span>
             </div>
             <div class="progress-bar"><div class="fill primary" style="width: 42%"></div></div>
@@ -114,55 +114,55 @@
           <div class="progress-item">
             <div class="progress-info">
               <div class="icon-box safe-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-              <span class="progress-label">风气干净</span>
+              <span class="progress-label">生态健康指数</span>
               <span class="value text-success">94%</span>
             </div>
             <div class="progress-bar"><div class="fill success" style="width: 94%"></div></div>
           </div>
         </div>
         <div class="system-notice">
-          "系统正在深度识别垂直游戏领域的黑话体系，当前识别库已更新至 1.24.0 版本。"
+          "系统正在深度识别垂直游戏领域的黑话体系与阴阳怪气语境，当前复杂异构数据集已更新至最新版本。"
         </div>
       </div>
 
       <div class="engine-section">
         <div class="mini-cards">
           <div class="mini-card card">
-            <div class="mini-header"><span>黑话</span> <span class="tag active">ACTIVE</span></div>
+            <div class="mini-header"><span>新型黑话</span> <span class="tag active">ACTIVE</span></div>
             <h2 class="mini-number">1,402</h2>
-            <p class="sub">今日检出数</p>
+            <p class="sub">今日毫秒级拦截</p>
             <div class="mini-chart" ref="miniChart1"></div>
           </div>
           <div class="mini-card card">
-            <div class="mini-header"><span>嘲讽</span> <span class="tag danger">OIGO</span></div>
+            <div class="mini-header"><span>关系流违规</span> <span class="tag danger">OIGO</span></div>
             <h2 class="mini-number">892</h2>
-            <p class="sub">今日检出数</p>
+            <p class="sub">社交链路阻断</p>
             <div class="mini-chart" ref="miniChart2"></div>
           </div>
           <div class="mini-card card">
             <div class="mini-header"><span>阴阳怪气</span> <span class="tag normal">NORMAL</span></div>
             <h2 class="mini-number">544</h2>
-            <p class="sub">今日检出数</p>
+            <p class="sub">多模态语义捕获</p>
             <div class="mini-chart" ref="miniChart3"></div>
           </div>
         </div>
 
         <div class="engine-banner">
           <div class="banner-content">
-            <h2>多模态语义分析引擎</h2>
-            <p>基于自研的深蓝语义大模型，我们能够精准识别隐藏在谐音、缩写以及游戏特定场景下的恶意言论。目前模型准确率已达 99.2%。</p>
+            <h2>多模态语义与行为分析引擎</h2>
+            <p>首创“关系流+文本流”双轨机制。深度融合 BERT 语义理解、GAT 社交图谱与 XGBoost 决策体系。不仅精准识别阴阳怪气，更独家生成“风险溯源拓扑图”，直击污染源头，建立用户信用评级体系。</p>
             <div class="banner-actions">
-              <button class="btn-white">查看详细报告</button>
+              <button class="btn-white">查看溯源拓扑图</button>
               <button class="btn-outline">引擎设置</button>
             </div>
           </div>
           <div class="banner-ring">
             <div class="ring-circle">
-              <span class="ring-score">90</span>
-              <span class="ring-label">SANITY</span>
+              <span class="ring-score">99</span>
+              <span class="ring-label">ACCURACY</span>
             </div>
           </div>
-          <div class="status-badge"><span class="dot-green"></span> 实时检测已就绪</div>
+          <div class="status-badge"><span class="dot-green"></span> 毫秒级主动防御就绪</div>
         </div>
       </div>
     </section>
@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 
 const barChartRef = ref(null)
@@ -182,6 +182,45 @@ const miniChart2 = ref(null)
 const miniChart3 = ref(null)
 
 let charts = []
+
+// 【核心修复】：全局响应式时间变量必须放在函数外
+const now = ref(new Date())
+let timer = null
+
+// 动态格式化最后更新时间
+const formattedUpdateTime = computed(() => {
+  const y = now.value.getFullYear()
+  const m = String(now.value.getMonth() + 1).padStart(2, '0')
+  const d = String(now.value.getDate()).padStart(2, '0')
+  const hh = String(now.value.getHours()).padStart(2, '0')
+  const mm = String(now.value.getMinutes()).padStart(2, '0')
+  const ss = String(now.value.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+})
+
+// 动态日历：年月
+const currentYearMonth = computed(() => {
+  return `${now.value.getFullYear()}年${now.value.getMonth() + 1}月`
+})
+
+// 动态日历：日期与星期
+const currentDayInfo = computed(() => {
+  const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+  return `${now.value.getDate()}日 ${days[now.value.getDay()]}`
+})
+
+// 生成近七天的日期数组 (格式: MM/DD)
+const getLast7Days = () => {
+  const days = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i) // 依次推算前6天到今天
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    days.push(`${month}/${day}`)
+  }
+  return days
+}
 
 const initCharts = () => {
   if (!barChartRef.value) return; // 防止DOM未加载完毕导致报错白屏
@@ -200,7 +239,14 @@ const initCharts = () => {
   const lineChart = echarts.init(lineChartRef.value)
   lineChart.setOption({
     grid: { top: 20, right: 10, bottom: 20, left: 10 },
-    xAxis: { type: 'category', data: ['05/18', '05/19', '05/20', '05/21', '05/22', '05/23', '05/24'], axisLine: {show: false}, axisTick: {show: false}, axisLabel: {color: '#64748B', fontSize: 12} },
+    xAxis: {
+      type: 'category',
+      // 👇 这里替换为动态获取的日期数组
+      data: getLast7Days(),
+      axisLine: {show: false},
+      axisTick: {show: false},
+      axisLabel: {color: '#64748B', fontSize: 12}
+    },
     yAxis: { type: 'value', show: false },
     series: [{ data: [10, 20, 15, 60, 10, 80, 30], type: 'line', smooth: true, symbol: 'none', lineStyle: { color: '#64748B', width: 2 } }]
   }); charts.push(lineChart)
@@ -216,7 +262,7 @@ const initCharts = () => {
   const pieChart = echarts.init(pieChartRef.value)
   pieChart.setOption({
     color: ['#8BA3E8'],
-    series: [{ type: 'pie', radius: ['0%', '70%'], label: { color: '#64748B', fontSize: 12, formatter: '{b}\n{c}' }, labelLine: { lineStyle: { color: '#CBD5E1' } }, itemStyle: { borderColor: '#fff', borderWidth: 2 }, data: [{ value: 404, name: '阴阳怪气' }, { value: 201, name: '嘲讽' }, { value: 195, name: '黑话' }] }]
+    series: [{ type: 'pie', radius: ['0%', '70%'], label: { color: '#64748B', fontSize: 12, formatter: '{b}\n{c}' }, labelLine: { lineStyle: { color: '#CBD5E1' } }, itemStyle: { borderColor: '#fff', borderWidth: 2 }, data: [{ value: 404, name: '阴阳怪气' }, { value: 201, name: '嘲讽攻击' }, { value: 195, name: '新型黑话' }] }]
   }); charts.push(pieChart)
 
   const miniOptions = (color) => ({ grid: { top: 5, right: 0, bottom: 0, left: 0 }, xAxis: { type: 'category', show: false, data: ['1','2','3','4','5'] }, yAxis: { type: 'value', show: false }, series: [{ type: 'bar', data: [3, 4, 3, 5, 2], itemStyle: { color: color }, barWidth: '80%' }] })
@@ -229,9 +275,18 @@ const initCharts = () => {
 onMounted(() => {
   nextTick(() => { setTimeout(initCharts, 100) }) // 确保渲染后再加载图表
   window.addEventListener('resize', () => charts.forEach(c => c.resize()))
+
+  // 启动时间定时器
+  timer = setInterval(() => {
+    now.value = new Date()
+  }, 1000)
 })
 
-onUnmounted(() => { charts.forEach(c => c.dispose()) })
+onUnmounted(() => {
+  charts.forEach(c => c.dispose())
+  // 清除定时器，防止内存泄漏
+  if (timer) clearInterval(timer)
+})
 </script>
 
 <style scoped>
