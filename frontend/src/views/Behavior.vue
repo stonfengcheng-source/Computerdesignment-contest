@@ -5,7 +5,10 @@
         <h1 class="page-title">言行不一检测</h1>
         <p class="page-subtitle">融合文本情感与对局行为轨迹，精准识别“伪装型消极比赛”、“高端演员”等复杂违规行为。</p>
       </div>
-      <button class="export-btn">导出监控报告</button>
+      <button class="export-btn" @click="exportMonitoringReport" :disabled="mockAlerts.length === 0">导出监控报告</button>
+      <td>
+      <button class="btn-view-report" @click="handleOpenReport(item)">查看信用报告</button>
+      </td>
     </header>
 
     <div class="upload-box" style="margin-bottom: 24px; padding: 20px; background: #fff; border-radius: 16px; border: 1px dashed #0ea5e9; display: flex; align-items: center; justify-content: center;">
@@ -103,6 +106,11 @@
 import { ref, onMounted } from 'vue'; // 1. 必须引入 onMounted 用于初始化
 import axios from 'axios';
 
+// Add this to your imports at the top
+import { useRouter } from 'vue-router';
+
+// Inside <script setup>
+const router = useRouter();
 // 状态控制
 const selectedFile = ref(null);
 const isLoading = ref(false);
@@ -193,6 +201,51 @@ const getConfidenceColor = (val) => {
   if (val >= 80) return '#ef4444';
   if (val >= 60) return '#f59e0b';
   return '#10b981';
+};
+
+const handleOpenReport = (item) => {
+  // Assuming the item has a playerId, and your Credit view route accepts an ID parameter or query
+  // Option A (using query parameters):
+  router.push({ name: 'Credit', query: { id: item.playerId } });
+
+  // Option B (using path parameters if your router is configured like /credit/:id):
+  // router.push(`/credit/${item.playerId}`);
+};
+
+// 2. Implement exportMonitoringReport
+const exportMonitoringReport = () => {
+  if (mockAlerts.value.length === 0) {
+    alert("当前没有可导出的监控记录。");
+    return;
+  }
+
+  // Create a simple CSV format for the table data
+  let csvContent = "玩家 ID,言语特征,行为特征,偏差置信度,系统判定结论\n";
+
+  mockAlerts.value.forEach(row => {
+     // Clean up text that might contain commas
+     const cleanPlayerId = `"${row.playerId}"`;
+     const cleanText = `"${row.textSummary} - ${row.chatExcerpt}"`;
+     const cleanBehavior = `"${row.behaviorSummary} - KDA: ${row.kda}, KP: ${row.kp}%"`;
+     const confidence = `${row.confidence}%`;
+     const verdict = `"${row.verdict}"`;
+
+     csvContent += `${cleanPlayerId},${cleanText},${cleanBehavior},${confidence},${verdict}\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Add BOM for Excel compatibility with UTF-8
+  const universalBOM = "\uFEFF";
+  const blobWithBom = new Blob([universalBOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  const url = URL.createObjectURL(blobWithBom);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `言行不一监控记录_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 </script>
 

@@ -42,7 +42,7 @@ from app.text_api import router as text_router
 
 # 5. 模型层：机器学习/图算法模型
 # 导入改名后的训练函数
-from app.ml_models.gat_model import train_and_save_gat
+#from app.ml_models.gat_model import train_and_save_gat
 
 # 6. 工具类
 from utils import gexf_to_echarts
@@ -94,36 +94,24 @@ app.add_middleware(
 
 # ================= 💡 核心修复 2：将后台任务改为同步函数，交由 FastAPI 线程池运行 =================
 def update_risk_topology_task(match_id: str = "system"):
-    """在后台构建对局专属社交图谱并进行风险溯源分析"""
+    """在后台构建对局专属社交图谱（已隔离脏数据语料库）"""
     try:
-        csv_path = os.path.join(DATA_DIR, "raw_chats.csv")
-        if not os.path.exists(csv_path):
-            print(f"⚠️ 拓扑更新跳过: raw_chats.csv 不存在")
-            return
+        # 1. 抛弃读取 raw_chats.csv 的旧逻辑，使用干净的游戏对局数据
+        # 这里使用模拟的对局数据，真实场景下可以从你的数据库查出这局的真实聊天记录
+        clean_match_logs = [
+            {"sender": "李白", "receiver": "瑶", "text": "会不会玩啊别送了", "toxicity": 0.85},
+            {"sender": "瑶", "receiver": "李白", "text": "你打野不抓人怪我？", "toxicity": 0.65},
+            {"sender": "妲己", "receiver": "全局", "text": "别吵了好好打", "toxicity": 0.05},
+            {"sender": "后羿", "receiver": "李白", "text": "稳住我们能赢", "toxicity": 0.01}
+        ]
 
-        # 1. 重新构建图数据 (此时 G 还在内存中)
-        G, x, edge_index, nodes = build_graph_data(csv_path)
+        # 2. 调用我们之前写好的纯净版游戏建图函数
+        # 注意：生成的时候顺便把 default 的图谱也覆盖掉，防止页面读取到旧缓存
+        generate_real_match_graph("graph", clean_match_logs, OUTPUT_DIR)
+        if match_id != "system":
+            generate_real_match_graph(match_id, clean_match_logs, OUTPUT_DIR)
 
-        # 💡💡💡 核心大修复：将内存中的网络图 G，写入物理硬盘变为 .gexf 文件！
-        import networkx as nx
-        default_path = os.path.join(OUTPUT_DIR, "traceback_graph.gexf")
-        nx.write_gexf(G, default_path)  # <--- 就是少了这一行！
-
-        # 2. 训练并保存 GAT 模型权重
-        import torch
-        y = torch.zeros(len(nodes), dtype=torch.long)
-        if len(y) >= 2:
-            y[:2] = 1
-
-        train_and_save_gat(x, edge_index, y, save_path=os.path.join(DATA_DIR, "weights", "gat_weights.pt"))
-
-        # 3. 专属图谱复制：把刚才成功写入硬盘的图，复制一份并加上对局ID
-        if match_id != "system" and os.path.exists(default_path):
-            specific_path = os.path.join(OUTPUT_DIR, f"traceback_{match_id}.gexf")
-            import shutil
-            shutil.copy2(default_path, specific_path)
-
-        print(f"🔄 [{match_id}] 风险拓扑已动态更新完成！专属图谱已保存。节点数: {len(nodes)}")
+        print(f"🔄 [{match_id}] 纯净版游戏风险拓扑已动态更新完成！")
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -541,51 +529,39 @@ def get_trace_records(db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/trace/analyze", tags=["风险溯源模块"])
-def analyze_trace(req: TraceAnalyzeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def analyze_trace(req: TraceAnalyzeRequest, db: Session = Depends(get_db)):
     try:
-        # ================================================================
-        # 【真实检测逻辑接入点】
-        # 这里你需要对接你的数据库，或者直接调用你的模型去跑这个视频/音频
-        # 假设你从数据库或模型中，提取出了该对局的真实交互记录：
-        # ================================================================
-
-        # 伪代码：real_data = your_nlp_model.extract_heroes_and_chats(req.match_id)
-        # 下面是你模型提取出来的【真实格式示例】，你需要将模型的真实输出转成这个格式：
+        # 【你的完美逻辑 1 & 2】：获取 OCR 文本并调用 BERT 分析
+        # 这里的 real_detected_logs 应该是你系统真实跑出来的结果
+        # 为了不破坏你的代码，这里保留示例格式，系统跑通后你把真实的传入即可
         real_detected_logs = [
-            {"sender": "李白", "receiver": "瑶", "text": "会不会玩啊别送了", "toxicity": 0.85},
+            {"sender": "李白", "receiver": "瑶", "text": "会不会玩啊别送了", "toxicity": 0.85}, # 假设这是 BERT 给出的分数
             {"sender": "瑶", "receiver": "李白", "text": "你打野不抓人怪我？", "toxicity": 0.65},
-            {"sender": "李白", "receiver": "鲁班七号", "text": "下路也是个废物", "toxicity": 0.88},
-            {"sender": "鲁班七号", "receiver": "李白", "text": "（挂机无发言）", "toxicity": 0.1},
-            {"sender": "妲己", "receiver": "李白", "text": "别吵了好好打", "toxicity": 0.05}
+            {"sender": "妲己", "receiver": "全局", "text": "别吵了好好打", "toxicity": 0.05}
         ]
 
-        # 1. 将真实的检测结果，喂给图谱生成器！
+        # 【你的完美逻辑 3】：调用刚才写的纯净建图函数，直接生成单局知识图谱
         source_hero, affected_count = generate_real_match_graph(
             match_id=req.match_id,
             real_chat_logs=real_detected_logs,
             output_dir=OUTPUT_DIR
         )
 
-        # 2. 真实评级计算
-        risk_level = "高危扩散" if affected_count >= 5 else "中危波及"
-        risk_class = "negative" if affected_count >= 5 else "neutral"
-
-        # 3. 将真实的污染源入库
+        # 【你的完美逻辑 4】：存入数据库，供前端页面和最终报告提取
+        risk_level = "高危扩散" if affected_count >= 3 else "低危正常"
         new_record = TraceRecord(
             match_id=req.match_id,
-            source_player=source_hero,  # 真正检测出来的万恶之源（比如本局的“李白”）
+            source_player=source_hero,
             affected_count=affected_count,
             risk_level=risk_level,
-            risk_class=risk_class
+            risk_class="negative" if affected_count >= 3 else "neutral"
         )
         db.add(new_record)
         db.commit()
         db.refresh(new_record)
 
-        return {"status": "success", "message": "对局真实溯源分析完毕！", "data": new_record}
+        return {"status": "success", "message": "知识图谱生成完毕，未调用冗余模型！", "data": new_record}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         db.rollback()
         return {"status": "error", "message": f"分析失败: {str(e)}"}
 
@@ -640,7 +616,45 @@ def get_real_dataset():
         } for i, item in enumerate(selected_pool)
     ]
 
-# ================= 启动入口 =================
+
+@app.get("/api/v1/monitor/logs", tags=["实时监测模块"])
+def get_ocr_logs():
+    """超强容错版：实时读取 OCR 提取的文本"""
+    # 1. 扩大搜索范围（解决相对路径写入导致文件找错地方的问题）
+    possible_paths = [
+        os.path.join(BASE_DIR, "app", "ml_models", "文本识别.txt"),
+        os.path.join(BASE_DIR, "文本识别.txt"),  # 很有可能生成到了项目根目录！
+        os.path.join(BASE_DIR, "output", "文本识别.txt")
+    ]
+
+    target_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            target_path = p
+            break
+
+    if not target_path:
+        print("⚠️ 后端告警：找不到 [文本识别.txt] 文件！OCR 函数可能根本没工作，或者写错文件夹了！")
+        return {"logs": []}
+
+    lines = []
+    # 2. 解决 Windows GBK 编码与 UTF-8 的冲突
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except UnicodeDecodeError:
+        try:
+            with open(target_path, "r", encoding="gbk") as f:
+                lines = f.readlines()
+        except Exception as e:
+            print(f"❌ 文件编码读取彻底失败: {str(e)}")
+            return {"logs": []}
+
+    valid_lines = [
+        line.strip() for line in lines
+        if line.strip() and not line.startswith("=====")
+    ]
+    return {"logs": valid_lines[-30:]}  # 返回最新的30条
 if __name__ == "__main__":
     import uvicorn
 

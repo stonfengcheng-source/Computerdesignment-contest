@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
@@ -108,12 +108,26 @@ let platformChart = null
 // ====== 💡 新增：监听路由自动搜索 ======
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  // 如果从靶场跳转过来，路由里会有 ?id=xxx 参数
+
+  // Check for ID in query parameters on mount
   if (route.query.id) {
+    // If the ID looks like the descriptive text from Behavior.vue (e.g., "最新检测: video.mp4"),
+    // you might want to extract just a clean ID or handle it gracefully.
+    // For now, let's assume it's a clean ID like 'admin_test_001'
     playerId.value = route.query.id
-    search() // 自动触发搜索
+    search()
   }
 })
+
+watch(
+  () => route.query.id,
+  (newId) => {
+    if (newId && newId !== playerId.value) {
+      playerId.value = newId;
+      search();
+    }
+  }
+)
 
 // ====== 真实调用后端接口 ======
 const search = async () => {

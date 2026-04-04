@@ -13,10 +13,10 @@
     <section class="search-section card">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="输入待溯源的对局ID" />
+        <input type="text" v-model="matchIdInput" placeholder="输入待溯源的对局ID (例如: MATCH_888)" />
       </div>
-      <button class="btn-primary">
-        <span class="icon">🕸️</span> 生成对局拓扑
+      <button class="btn-primary" @click="generateTopology" :disabled="isAnalyzing">
+        <span class="icon">🕸️</span> {{ isAnalyzing ? '引擎分析中...' : '生成对局拓扑' }}
       </button>
     </section>
 
@@ -77,44 +77,22 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="text-primary">#GAME-9921-02X</td>
-              <td>2023-11-24 14:20:12</td>
+            <tr v-for="record in historyRecords" :key="record.id">
+              <td class="text-primary">{{ record.match_id }}</td>
+              <td>{{ record.created_at || '刚刚' }}</td>
               <td>
                 <div class="user-info">
                   <div class="avatar bg-dark"></div>
-                  <span>用户_阿尔法_99</span>
+                  <span>{{ record.source_player }}</span>
                 </div>
               </td>
-              <td class="font-bold">1,240</td>
-              <td><span class="badge badge-critical"><span class="dot"></span> 严重</span></td>
-              <td><a href="#" class="link">查看图谱 ></a></td>
-            </tr>
-            <tr>
-              <td class="text-primary">#GAME-8152-77P</td>
-              <td>2023-11-24 12:45:00</td>
+              <td class="font-bold">{{ record.affected_count }}</td>
               <td>
-                <div class="user-info">
-                  <div class="avatar bg-gray"></div>
-                  <span>暗影_奔跑者</span>
-                </div>
+                <span class="badge" :class="record.risk_class === 'negative' ? 'badge-critical' : 'badge-moderate'">
+                  <span class="dot"></span> {{ record.risk_level }}
+                </span>
               </td>
-              <td class="font-bold">458</td>
-              <td><span class="badge badge-high"><span class="dot"></span> 高危</span></td>
-              <td><a href="#" class="link">查看图谱 ></a></td>
-            </tr>
-            <tr>
-              <td class="text-primary">#GAME-7712-41L</td>
-              <td>2023-11-24 09:15:33</td>
-              <td>
-                <div class="user-info">
-                  <div class="avatar bg-light"></div>
-                  <span>静默_风暴</span>
-                </div>
-              </td>
-              <td class="font-bold">89</td>
-              <td><span class="badge badge-moderate"><span class="dot"></span> 中等</span></td>
-              <td><a href="#" class="link">查看图谱 ></a></td>
+              <td><a href="javascript:void(0)" class="link" @click="viewGraph(record)">查看图谱 ></a></td>
             </tr>
           </tbody>
         </table>
@@ -168,7 +146,45 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
+const matchIdInput = ref('')
+const isAnalyzing = ref(false)
+const historyRecords = ref([])
 
+// 1. 页面加载时：自动从数据库拉取真实历史记录
+const fetchRecords = async () => {
+  try {
+    const res = await axios.get('/api/v1/trace/records')
+    historyRecords.value = res.data.data
+  } catch (error) {
+    console.error('拉取历史记录失败', error)
+  }
+}
+
+// 2. 点击按钮时：调用后端核心引擎进行真实推演
+const generateTopology = async () => {
+  if (!matchIdInput.value.trim()) return alert('请输入对局 ID！')
+  isAnalyzing.value = true
+  try {
+    await axios.post('/api/v1/trace/analyze', { match_id: matchIdInput.value })
+    alert('溯源分析完毕！')
+    matchIdInput.value = '' // 清空输入
+    await fetchRecords() // 重新拉取最新表格数据
+  } catch (error) {
+    alert('引擎调用失败，请检查后端运行状态。')
+  } finally {
+    isAnalyzing.value = false
+  }
+}
+
+// 3. 点击查看图谱
+const viewGraph = (record) => {
+  console.log('准备渲染图谱，参数:', record.match_id)
+  // 这里可以触发你原有的 Echarts 渲染逻辑或打开弹窗
+}
+
+onMounted(() => {
+  fetchRecords()
+})
 const heatmapRef = ref(null)
 let chartInstance = null
 
