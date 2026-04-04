@@ -20,16 +20,16 @@
           </div>
           <div class="header-actions">
             <input type="file" ref="fileInput" accept="video/mp4,video/x-m4v,video/*" style="display: none" @change="handleFileUpload" />
-
             <button class="btn-text text-danger" @click="clearVideo" v-if="videoSrc">清除视频</button>
             <button class="btn-outline" @click="triggerUpload">上传本地视频</button>
-            <button class="btn-primary" :disabled="!videoSrc">开始分析</button>
+            <button class="btn-primary" :disabled="!videoSrc || isAnalyzing" @click="startAnalysis">
+              {{ isAnalyzing ? '引擎检测中...' : '开始分析' }}
+            </button>
           </div>
         </div>
 
         <div class="video-player">
           <video v-if="videoSrc" :src="videoSrc" controls autoplay loop class="real-video-element"></video>
-
           <div v-else class="video-overlay empty-video">
             <div class="center-focus">
               <div class="focus-box"></div>
@@ -44,37 +44,16 @@
           <h3>文本与毒性(%)标签</h3>
         </div>
         <div class="feed-list">
-          <div class="feed-item danger">
+          <div v-for="(log, index) in displayLogs" :key="index" class="feed-item danger">
             <div class="item-top">
               <span class="tag-type">言</span>
-              <span class="score">87.4%</span>
+              <span class="score">文本捕获</span>
             </div>
-            <p class="item-desc">检测到高频违规词汇，涉及地域歧视攻击...</p>
-            <span class="time">14:20:45.023</span>
+            <p class="item-desc">{{ log }}</p>
+            <span class="time">最新抓取</span>
           </div>
-          <div class="feed-item normal">
-            <div class="item-top">
-              <span class="tag-type gray">行</span>
-              <span class="score gray">12.1%</span>
-            </div>
-            <p class="item-desc">玩家移动轨迹正常，无异常行为。</p>
-            <span class="time">14:20:42.112</span>
-          </div>
-          <div class="feed-item danger">
-            <div class="item-top">
-              <span class="tag-type">言</span>
-              <span class="score">94.2%</span>
-            </div>
-            <p class="item-desc">包含敏感诱导词汇，触发核心熔断机制。</p>
-            <span class="time">14:20:38.887</span>
-          </div>
-          <div class="feed-item warning">
-            <div class="item-top">
-              <span class="tag-type warning-tag">行</span>
-              <span class="score warning-text">78.5%</span>
-            </div>
-            <p class="item-desc">检测到非法微操模拟，判定为脚本辅助。</p>
-            <span class="time">14:20:35.401</span>
+          <div v-if="displayLogs.length === 0" style="padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">
+            视频流分析尚未产生违规文本...
           </div>
         </div>
       </div>
@@ -128,15 +107,25 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import axios from 'axios'
 
+// 1. 变量声明
 const fileInput = ref(null)
 const videoSrc = ref(null)
+const selectedFileObj = ref(null)
+const isAnalyzing = ref(false)
 
+const seenLogsSet = new Set()
+const displayLogs = ref([])
+let logPollingTimer = null
+
+// 2. 视频与文件操作
 const triggerUpload = () => { fileInput.value.click() }
 
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file && file.type.startsWith('video/')) {
+    selectedFileObj.value = file
     if (videoSrc.value) URL.revokeObjectURL(videoSrc.value)
     videoSrc.value = URL.createObjectURL(file)
   } else {
@@ -149,9 +138,55 @@ const clearVideo = () => {
     URL.revokeObjectURL(videoSrc.value)
     videoSrc.value = null
   }
+  selectedFileObj.value = null
   if (fileInput.value) fileInput.value.value = ''
+
+  // 清理轮询与数据
+  if (logPollingTimer) clearInterval(logPollingTimer)
+  displayLogs.value = []
+  seenLogsSet.clear()
 }
 
+// 3. 核心：调用引擎并实时拉取文本
+const startAnalysis = async () => {
+  if (!selectedFileObj.value) return alert("请先上传视频文件！")
+
+  isAnalyzing.value = true
+
+  const formData = new FormData()
+  formData.append('video_file', selectedFileObj.value)
+  formData.append('player_id', 'Monitor_Live_001')
+
+  // 开启轮询拉取日志
+  logPollingTimer = setInterval(async () => {
+    try {
+      const res = await axios.get('/api/v1/monitor/logs')
+      const incomingLogs = res.data.logs || []
+
+      incomingLogs.forEach(line => {
+        if (!seenLogsSet.has(line)) {
+          seenLogsSet.add(line)
+          displayLogs.value.unshift(line) // 最新弹幕排在最前
+        }
+      })
+    } catch (error) {
+      console.error("拉取日志失败:", error)
+    }
+  }, 1500)
+
+  // 提交视频分析
+  try {
+    await axios.post('/api/v1/analyze/video', formData)
+    console.log("视频全流程分析完毕")
+  } catch (error) {
+    console.error("AI 引擎调用异常:", error)
+  } finally {
+    isAnalyzing.value = false
+    if (logPollingTimer) clearInterval(logPollingTimer)
+  }
+}
+
+// 4. Echarts 图表渲染
 const timelineChartRef = ref(null)
 const pieChartRef = ref(null)
 let charts = []
@@ -183,7 +218,11 @@ onMounted(() => {
   nextTick(() => { setTimeout(initCharts, 100) })
   window.addEventListener('resize', () => charts.forEach(c => c.resize()))
 })
-onUnmounted(() => { charts.forEach(c => c.dispose()) })
+
+onUnmounted(() => {
+  charts.forEach(c => c.dispose())
+  if (logPollingTimer) clearInterval(logPollingTimer)
+})
 </script>
 
 <style scoped>
@@ -223,11 +262,7 @@ onUnmounted(() => { charts.forEach(c => c.dispose()) })
 .feed-item.danger { background: #FEF2F2; border-color: #FECACA; }
 .item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .tag-type { background: #FEE2E2; color: #DC2626; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-.tag-type.gray { background: #E2E8F0; color: #475569; }
-.tag-type.warning-tag { background: #FEF3C7; color: #D97706; }
 .score { font-weight: 700; font-size: 15px; color: #DC2626; }
-.score.gray { color: #475569; }
-.score.warning-text { color: #D97706; }
 .item-desc { font-size: 13px; color: #334155; margin: 0 0 12px 0; line-height: 1.6; }
 .time { font-size: 12px; color: #94A3B8; }
 .topology-entry { cursor: pointer; transition: border-color 0.3s; }

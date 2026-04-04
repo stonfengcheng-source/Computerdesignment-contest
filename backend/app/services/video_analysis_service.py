@@ -1,15 +1,16 @@
-# backend/app/services/video_analysis_service.py
 import cv2
 import numpy as np
 import os
 # 导入你真实训练出来的 BERT 模型打分函数
 from app.ml_models.text_model import get_toxicity_score
 
+# 💡 核心修复 1：导入你写好的真实 OCR 视频文字提取函数
+from app.ml_models.gat_model import extract_chat_from_video
+
 
 def process_video_for_inconsistency(video_path: str, player_id: str):
     """
-    拒绝造假！这里执行真实的 OpenCV 逐帧光流差分运算和 BERT 前向传播。
-    这段代码在处理几百兆的视频时，必然会产生真实的耗时！
+    拒绝造假！这里执行真实的 OpenCV 逐帧光流差分运算、EasyOCR 文字提取 和 BERT 前向传播。
     """
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"视频文件未找到: {video_path}")
@@ -47,10 +48,26 @@ def process_video_for_inconsistency(video_path: str, player_id: str):
     else:
         behavior_error = 0.0
 
-    # ================= 真实计算 2: NLP 文本毒性 =================
-    # 在这个阶段调用你刚才加载的 400MB BERT 模型进行张量运算
-    mock_extracted_text = "你这走位真垃圾，会不会玩？"
-    text_prob = get_toxicity_score(mock_extracted_text)
+    # ================= 真实计算 2: OCR 弹幕提取 & NLP 文本毒性 =================
+    print(f"🚀 正在对视频 {video_path} 进行真实的 OCR 文字提取...")
+
+    # 💡 核心修复 2：真正调用 OCR 函数。这个函数内部会动态写入 文本识别.txt！
+    extracted_texts = extract_chat_from_video(video_path)
+
+    # 找出毒性最高的一句话作为这一局的最终判定分数
+    max_text_prob = 0.0
+    if extracted_texts:
+        for text in extracted_texts:
+            # 去掉提取结果里的格式前缀，只留真正的内容进行 BERT 打分
+            clean_text = text.split("：")[-1] if "：" in text else text
+            prob = get_toxicity_score(clean_text)
+            if prob > max_text_prob:
+                max_text_prob = prob
+    else:
+        # 如果视频里没提取出任何文字，基础分为 0.05
+        max_text_prob = 0.05
+
+    text_prob = max_text_prob
 
     # ================= 多模态融合判决 =================
     toxicity_score = (text_prob * 0.6) + (behavior_error * 0.4)

@@ -140,7 +140,7 @@ const getRiskLevel = (color) => {
 const fetchHistory = async () => {
   try {
     // 【注意】这里请替换为你后端实际的拉取历史记录接口
-    const response = await axios.get('http://127.0.0.1:8000/api/v1/trace/records')
+    const response = await axios.get('api/v1/trace/records')
 
     // 将后端返回的记录映射为前端需要的格式
     const history = response.data.data.map(item => ({
@@ -173,7 +173,7 @@ const startTrace = async () => {
 
   try {
     // 【注意】这里请替换为你后端实际触发分析的接口
-    const response = await axios.post('http://127.0.0.1:8000/api/v1/trace/analyze', {
+    const response = await axios.post('/api/v1/trace/analyze', {
       match_id: newMatchId.value
     })
 

@@ -6,14 +6,6 @@
         <p class="page-subtitle">分析维度：多模态毒性语义解析</p>
       </div>
       <div class="header-actions">
-        <button class="btn-export">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          导出报告
-        </button>
-        <button class="btn-refresh" @click="resetAnalysis">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          重新扫描
-        </button>
       </div>
     </header>
 
@@ -118,27 +110,29 @@ const startAnalysis = async () => {
     formData.append('chat_text', inputText.value)
 
     // 调用你刚写的真实后端接口
-    const response = await axios.post('http://localhost:8000/analyze_text', formData)
+   // 自动利用 Vite 的跨域代理，并补全完整的后端前缀路由
+    const response = await axios.post('/api/v1/text/analyze_text', formData)
     const data = response.data
 
     resultData.isAnalyzed = true
 
     // 获取算分结果 (假设 toxicity_score 是 0 到 100 的数值)
-    const score = data.toxicity_score || 0
+    const rawScore = data.toxicity_score || 0
+    const score = rawScore <= 1 ? rawScore * 100 : rawScore
 
+    resultData.isAnalyzed = true
     // 动态渲染评级
     if (score > 60) {
-      resultData.judgment = '检测到高危违规内容'
-      resultData.riskLevelText = '高危风险'
-      resultData.riskLevelClass = 'badge-danger'
-      resultData.hasLethalThreat = score > 85
-      resultData.lethalThreat = score > 85 ? '触发熔断拦截' : '需人工复核'
-    } else {
-      resultData.judgment = '内容安全合规'
-      resultData.riskLevelText = '安全'
-      resultData.riskLevelClass = 'badge-success'
-      resultData.hasLethalThreat = false
-      resultData.lethalThreat = '无风险'
+    resultData.judgment = '检测到高危违规内容'
+    resultData.riskLevelText = '高危风险'
+    resultData.riskLevelClass = 'badge-danger'
+    resultData.lethalThreat = score > 85 ? '触发熔断拦截' : '需人工复核'
+    }
+    else {
+    resultData.judgment = '内容安全合规'
+    resultData.riskLevelText = '安全'
+    resultData.riskLevelClass = 'badge-success'
+    resultData.lethalThreat = '无风险'
     }
 
     // 将你后端的 5 维数据格式化成专业报告的样式展示在"证据与分析"框里
@@ -150,8 +144,8 @@ const startAnalysis = async () => {
                           `• 黑话/术语识别: ${data.is_jargon ? '已检出 (关联游戏内特有黑话字典)' : '未检出'}`
 
     // 动态计算底部大卡片的数字
-    resultData.purificationIndex = Math.max(0, 100 - score).toFixed(2)
-    resultData.semanticScore = `${score.toFixed(1)}/100`
+    resultData.purificationIndex = (100 - score).toFixed(2)
+    resultData.semanticScore = `${score.toFixed(1)} / 100`
 
   } catch (error) {
     console.error("API请求失败:", error)
@@ -166,6 +160,44 @@ const resetAnalysis = () => {
   inputText.value = ''
   Object.assign(resultData, defaultData)
 }
+
+// Add this function below your resetAnalysis function
+const exportReport = () => {
+  if (!resultData.isAnalyzed) return;
+
+  const reportContent = `
+=========== 深蓝卫士 - 文本安全深度检测报告 ===========
+检测时间: ${new Date().toLocaleString()}
+
+【原始检测文本】
+${inputText.value}
+
+【引擎判定结果】
+判定结论: ${resultData.judgment}
+风险等级: ${resultData.riskLevelText}
+
+【详细多维指标】
+综合净化指数: ${resultData.purificationIndex}
+语义健康度评分: ${resultData.semanticScore}
+致命性威胁预警: ${resultData.lethalThreat}
+
+【模型证据与分析】
+${resultData.evidence}
+===================================================
+  `;
+
+  // Create a Blob and trigger a download
+  const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `文本安全检测报告_${new Date().getTime()}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 </script>
 
 <style scoped>

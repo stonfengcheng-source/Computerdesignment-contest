@@ -2,13 +2,23 @@ import networkx as nx
 import base64
 import os
 
+
 def gexf_to_echarts(file_path):
-    """转换 GEXF 为 ECharts 格式"""
+    """转换 GEXF 为前端支持的格式，保留颜色和大小属性"""
     if not os.path.exists(file_path):
         return {"nodes": [], "links": []}
+
     G = nx.read_gexf(file_path)
-    # 简单的节点与边转换逻辑
-    nodes = [{"id": str(n), "name": str(n), "symbolSize": 30} for n in G.nodes()]
+    nodes = []
+    for n, d in G.nodes(data=True):
+        nodes.append({
+            "id": str(n),
+            "name": d.get("name", str(n)),
+            "label": d.get("label", str(n)),
+            "symbolSize": d.get("symbolSize", 30),
+            "color": d.get("color", "#67C23A")  # 提取节点真实颜色
+        })
+
     links = [{"source": str(u), "target": str(v)} for u, v in G.edges()]
     return {"nodes": nodes, "links": links}
 
