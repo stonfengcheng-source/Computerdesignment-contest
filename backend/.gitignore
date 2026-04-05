@@ -25,6 +25,8 @@ data/slang_dict.json
 
 output/
 
+backend/output/
+
 pretrained_model/
 *.tar
 *.bin
