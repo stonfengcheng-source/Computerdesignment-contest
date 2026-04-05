@@ -1,125 +1,125 @@
 import os
-import torch
 import cv2
 import re
 import time
 import numpy as np
 from tqdm import tqdm
 from difflib import SequenceMatcher
+from datetime import datetime
 
 # ========================
-# 💡 核心升级：切换至 RapidOCR 引擎 (高精度中文识别)
+# 1. 引擎初始化
 # ========================
 try:
     from rapidocr_onnxruntime import RapidOCR
 
     ocr_engine = RapidOCR()
-    print("✅ 成功加载高精度中文引擎: RapidOCR")
+    print("✅ 成功加载 RapidOCR (高精度模式)")
 except ImportError:
-    print("❌ 严重错误: 请务必在终端执行 'pip install rapidocr_onnxruntime'！")
+    print("❌ 严重错误: 必须安装 RapidOCR。终端执行: pip install rapidocr_onnxruntime")
     exit(1)
 
 # ========================
-# 路径配置
+# 2. 路径配置 (确保前端能读到)
 # ========================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-save_dir = os.path.join(BASE_DIR, "output")
-os.makedirs(save_dir, exist_ok=True)
+output_dir = os.path.join(BASE_DIR, "output")
+legacy_dir = os.path.join(BASE_DIR, "app", "ml_models")
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(legacy_dir, exist_ok=True)
 
-txt_original_path = os.path.join(save_dir, "文本识别.txt")
-txt_cleaned_path = os.path.join(save_dir, "文本识别_清洗后.txt")
-txt_final_cleaned_path = os.path.join(save_dir, "文本识别_最终干净版.txt")
+latest_log_path_1 = os.path.join(output_dir, "文本识别.txt")
+latest_log_path_2 = os.path.join(legacy_dir, "文本识别.txt")
 
-with open(txt_original_path, "w", encoding="utf-8") as f_init:
-    f_init.write("===== 游戏多模态实时捕获流 =====\n\n")
+for path in [latest_log_path_1, latest_log_path_2]:
+    with open(path, "w", encoding="utf-8") as f_init:
+        f_init.write("===== 游戏多模态实时捕获流 =====\n\n")
 
-cleaned_records = []
-SIMILAR_THRESHOLD = 0.7
-MIN_CONTENT_LENGTH = 5
 
-# ==============================================
-# 英雄名修正 + 模糊匹配 (原版逻辑)
-# ==============================================
-standard_players = {}
-hero_name_list = [
-    "马超", "貂蝉", "小乔", "李白", "刘备", "诸葛亮", "韩信", "后羿", "亚瑟",
-    "安琪拉", "妲己", "狄仁杰", "典韦", "墨子", "孙斌", "鲁班七号", "庄周",
-    "刘禅", "高渐离", "阿轲", "钟无艳", "孙尚香"
+def write_and_flush(filepath, text):
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+# ========================
+# 3. 词表与名字锁定机制
+# ========================
+HERO_LIST = [
+    "暃", "云缨", "百里玄策", "百里守约", "李白", "荆轲", "澜", "孙悟空", "赵云", "镜", "橘右京",
+    "马超", "娜可露露", "云中君", "不知火舞", "上官婉儿", "花木兰", "司马懿", "兰陵王", "元歌",
+    "韩信", "裴擒虎", "貂蝉", "嫦娥", "沈梦溪", "米莱狄", "弈星", "杨玉环", "女娲", "干将莫邪",
+    "诸葛亮", "钟馗", "张良", "王昭君", "姜子牙", "露娜", "安琪拉", "武则天", "甄姬", "周瑜",
+    "芈月", "扁鹊", "孙膑", "高渐离", "嬴政", "妲己", "墨子", "小乔", "后羿", "黄忠", "狄仁杰",
+    "鲁班七号", "成吉思汗", "虞姬", "伽罗", "孙尚香", "李元芳", "公孙离", "马可波罗", "司空震",
+    "夏洛特", "蒙恬", "曜", "盘古", "孙策", "狂铁", "苏烈", "铠", "李信", "哪吒", "杨戬",
+    "雅典娜", "夏侯惇", "关羽", "刘备", "曹操", "典韦", "宫本武藏", "吕布", "钟无艳", "亚瑟",
+    "达摩", "老夫子", "程咬金", "猪八戒", "梦奇", "瑶", "明世隐"
 ]
 
-hero_fix_map = {"马": "马超", "写超": "马超", "马操": "马超", "马曹": "马超",
-                "貂": "貂蝉", "婵": "貂蝉", "掉婵": "貂蝉", "貂'": "貂蝉",
-                "乔": "小乔", "少乔": "小乔", "乔乔": "小乔", "少赤": "小乔",
-                "李": "李白", "白": "李白", "小白": "李白"}
+hero_fix_map = {
+    "马": "马超", "写超": "马超", "马操": "马超", "马曹": "马超",
+    "貂": "貂蝉", "婵": "貂蝉", "掉婵": "貂蝉",
+    "乔": "小乔", "少乔": "小乔", "乔乔": "小乔",
+    "李": "李白", "白": "李白", "小白": "李白",
+    "半月": "芈月", "辈月": "芈月", "月": "芈月", "半": "芈月",
+    "娥": "嫦娥", "常娥": "嫦娥", "鲁班": "鲁班七号"
+}
 
 
-def fix_player_and_hero(player, hero):
-    global standard_players
-    player = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5]', '', player).strip()
-    hero = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5]', '', hero).strip()
-    if hero in hero_fix_map: hero = hero_fix_map[hero]
+def refine_hero_name(raw_name):
+    clean_name = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5]', '', raw_name).strip()
+    if not clean_name: return "未知"
+    if clean_name in hero_fix_map: return hero_fix_map[clean_name]
 
-    best_hero, max_sim = hero, 0
-    for h in hero_name_list:
-        sim = SequenceMatcher(None, hero, h).ratio()
-        if sim > max_sim: max_sim, best_hero = sim, h
-    if max_sim > 0.5: hero = best_hero
-
-    if hero not in standard_players: standard_players[hero] = []
-    for std_p in standard_players[hero]:
-        if SequenceMatcher(None, player, std_p).ratio() > 0.7: return std_p, hero
-    standard_players[hero].append(player)
-    return player, hero
+    best_match, highest_sim = clean_name, 0
+    for hero in HERO_LIST:
+        sim = SequenceMatcher(None, clean_name, hero).ratio()
+        if sim > highest_sim:
+            highest_sim, best_match = sim, hero
+    return best_match if highest_sim > 0.4 else clean_name
 
 
-def is_keyboard_or_garbage(text_line):
-    """单行文本的键盘及垃圾字符拦截器"""
+def is_garbage(text_line):
     upper_text = text_line.upper()
-    # 拦截键盘特征
-    if re.search(r'(Q.*W.*E|符号|中英|分词|A.*S.*D|发送)', upper_text):
-        return True
+    if re.search(r'(Q.*W.*E|A.*S.*D|符号|分词|中英)', upper_text): return True
+    if len(re.findall(r'[\u4e00-\u9fa5]', upper_text)) < 2: return True
     return False
 
 
-# ==============================================
-# 核心提取流
-# ==============================================
-def extract_chat_from_video(video_path, sample_rate=15):
-    print(f"\n▶ 引擎启动：基于 RapidOCR 的高精度实机提取 -> {video_path}")
+# ========================
+# 4. 核心提取与多行合并逻辑
+# ========================
+def extract_chat_from_video(video_path):
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_log_path = os.path.join(output_dir, f"ocr_result_{timestamp_str}.txt")
+    print(f"\n▶ 引擎启动：【多行合并+极速版】 -> 永久记录保存至 {os.path.basename(run_log_path)}")
+
+    with open(run_log_path, "w", encoding="utf-8") as f:
+        f.write(f"===== 游戏识别日志 ({timestamp_str}) =====\n\n")
+
     cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        print(f"❌ 无法打开视频")
-        return []
+    if not cap.isOpened(): return []
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0: fps = 30
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30
 
-    # 聊天区域框定 (只保留左下角聊天区，切掉多余部分)
-    chat_x1, chat_y1 = 0.00, 0.50
-    chat_x2, chat_y2 = 0.45, 0.90
+    # 🎯 提速关键 1：采样率改为 fps（即 1 秒只扫描 1 次，弹幕停留长达 5 秒，绝对扫得到）
+    sample_rate = int(fps)
 
-    # 【极致宽容的正则】：支持带前缀的玩家名、中英文括号、可选的冒号
-    # 格式示例： [蓝色ID]张三(李白)：请求集合  或  (队伍)李四（韩信）发起进攻
-    pattern_standard = re.compile(r'(?:\[.*?\]|【.*?】|\(.*?\))?\s*(.*?)[\(（](.*?)[\)）][:：]?(.*)')
+    chat_x1, chat_y1, chat_x2, chat_y2 = 0.00, 0.45, 0.45, 0.90
+    pattern = re.compile(r'(.*?)[\(（](.*?)[\)）][:：](.*)')
 
-    already_recognized = set()
-    final_result = []
+    MATCH_HERO_PLAYER_MAP = {}
+    HERO_CHAT_HISTORY = {}
 
-    def calc_similarity(a, b):
-        return SequenceMatcher(None, a, b).ratio()
-
-    def is_similar_to_existing(new_text):
-        for existing_text in cleaned_records:
-            new_content = new_text.split("| [发言] ")[-1] if "| [发言] " in new_text else new_text
-            existing_content = existing_text.split("| [发言] ")[-1] if "| [发言] " in existing_text else existing_text
-            if calc_similarity(new_content, existing_content) >= SIMILAR_THRESHOLD:
-                return True
-        return False
-
+    final_output = []
     frame_idx = 0
-    pbar = tqdm(total=total_frames, desc="视频智能解析中", unit="帧")
+    pbar = tqdm(total=total_frames, desc="视频解析中", unit="帧")
     last_update_time = time.time()
+
+    prev_gray = None
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -127,53 +127,99 @@ def extract_chat_from_video(video_path, sample_rate=15):
 
         if frame_idx % sample_rate == 0:
             h, w = frame.shape[:2]
-            chat_region = frame[int(h * chat_y1):int(h * chat_y2), int(w * chat_x1):int(w * chat_x2)]
+            roi = frame[int(h * chat_y1):int(h * chat_y2), int(w * chat_x1):int(w * chat_x2)]
+            gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
-            # 使用 RapidOCR 读取（不需要转灰度，它内部处理得更好）
-            ocr_result, _ = ocr_engine(chat_region)
+            # 🎯 提速关键 2：放宽光流对比阈值，游戏背景有特效抖动，4.0 以内都算静止
+            skip_ocr = False
+            if prev_gray is not None:
+                if np.mean(cv2.absdiff(prev_gray, gray)) < 4.0:
+                    skip_ocr = True
+            prev_gray = gray.copy()
 
-            if ocr_result:
-                # RapidOCR 会把一整句话作为一个 list item 返回，不需要我们去拼接碎片！
-                for item in ocr_result:
-                    text_line = item[1].strip()  # 提取出的文本内容
+            if not skip_ocr:
+                result, _ = ocr_engine(gray)
 
-                    if len(text_line) < 5 or is_keyboard_or_garbage(text_line):
-                        continue
+                if result:
+                    # 💡 解决截断关键：同一帧内的状态机，负责拼合换行文字
+                    current_speaker_player = None
+                    current_speaker_hero = None
+                    current_content = ""
+                    parsed_messages = []
 
-                    # 计算时间戳
-                    current_seconds = int(frame_idx / fps)
-                    ts = f"[{current_seconds // 60:02d}:{current_seconds % 60:02d}]"
+                    for item in result:
+                        text_line = item[1].replace(" ", "")
+                        if is_garbage(text_line): continue
 
-                    # 尝试匹配格式
-                    match = pattern_standard.search(text_line)
-                    if match:
-                        player = match.group(1).replace("|", "").strip()
-                        hero = match.group(2).replace("|", "").strip()
-                        content = match.group(3).replace("|", "").strip()
+                        match = pattern.search(text_line)
+                        if match:
+                            # 发现了新的发言人头部，把刚才积攒的“老发言”先存起来
+                            if current_speaker_hero and current_content:
+                                parsed_messages.append((current_speaker_player, current_speaker_hero, current_content))
 
-                        if not player or not hero or not content:
-                            continue
+                            raw_player = match.group(1)
+                            raw_hero = match.group(2)
+                            current_content = match.group(3).strip()
 
-                        # 剥离杂乱前缀
-                        player = re.sub(r'^[【\[\(（].*?[】\]\)）]', '', player).strip()
-                        player, hero = fix_player_and_hero(player, hero)
+                            # 净化与锁定
+                            player = re.sub(r'^[\[【\(（].*?[\]】\)）]', '', raw_player).strip()
+                            player = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5\_]', '', player)
+                            hero = refine_hero_name(raw_hero)
 
-                        final_text = f"{ts} {player}({hero}) | [发言] {content}"
+                            if hero != "未知":
+                                if hero not in MATCH_HERO_PLAYER_MAP:
+                                    MATCH_HERO_PLAYER_MAP[hero] = player
+                                current_speaker_player = MATCH_HERO_PLAYER_MAP[hero]
+                                current_speaker_hero = hero
+                            else:
+                                current_speaker_player, current_speaker_hero = player, hero
 
-                        if final_text not in already_recognized:
-                            with open(txt_original_path, "a", encoding="utf-8") as f_out:
-                                f_out.write(final_text + "\n")
+                        else:
+                            # 💡 没匹配到头部？这很可能是第二行被截断的文本！
+                            if current_speaker_hero and current_content:
+                                # 剔除标点符号以外的乱码，拼接到刚才的文字末尾
+                                clean_cont = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5，。！？、]', '', text_line)
+                                if clean_cont:
+                                    current_content += clean_cont
 
-                            already_recognized.add(final_text)
-                            final_result.append(final_text)
-                            print(f"\n✅ 捕获: {final_text}")
+                    # 收尾帧内最后一句
+                    if current_speaker_hero and current_content:
+                        parsed_messages.append((current_speaker_player, current_speaker_hero, current_content))
 
-                            if not is_similar_to_existing(final_text):
-                                cleaned_records.append(final_text)
+                    # ==================================
+                    # 进行极严格的防漏、防重复校验
+                    # ==================================
+                    for player, hero, content in parsed_messages:
+                        is_duplicate = False
+                        if hero in HERO_CHAT_HISTORY:
+                            for exist_msg in HERO_CHAT_HISTORY[hero][-8:]:
+                                # 如果新内容包含老内容（说明新内容是老内容的完整换行版），我们应该保留新内容！
+                                if exist_msg in content and len(content) > len(exist_msg):
+                                    pass  # 放行完整版
+                                # 如果新内容只是老内容的一部分，或者高度相似，就是重复
+                                elif content in exist_msg or SequenceMatcher(None, content, exist_msg).ratio() > 0.80:
+                                    is_duplicate = True
+                                    break
+
+                        if is_duplicate: continue
+
+                        # 确认是新内容
+                        if hero not in HERO_CHAT_HISTORY: HERO_CHAT_HISTORY[hero] = []
+                        HERO_CHAT_HISTORY[hero].append(content)
+
+                        cur_sec = int(frame_idx / fps)
+                        ts = f"[{cur_sec // 60:02d}:{cur_sec % 60:02d}]"
+                        full_entry = f"{ts} {player}({hero}) | [发言] {content}"
+
+                        final_output.append(full_entry)
+                        write_and_flush(run_log_path, full_entry)
+                        write_and_flush(latest_log_path_1, full_entry)
+                        write_and_flush(latest_log_path_2, full_entry)
+                        print(f"\n✅ 精准捕获: {full_entry}")
 
         if time.time() - last_update_time >= 0.5:
             pbar.update(frame_idx - pbar.n)
-            pbar.set_postfix({"已捕获": len(final_result)})
+            pbar.set_postfix({"已捕获": len(final_output)})
             last_update_time = time.time()
 
         frame_idx += 1
@@ -181,31 +227,10 @@ def extract_chat_from_video(video_path, sample_rate=15):
     pbar.update(total_frames - pbar.n)
     pbar.close()
     cap.release()
-    return final_result
+    return final_output
 
 
 if __name__ == "__main__":
-    VIDEO_PATH = os.path.join(BASE_DIR, "data", "uploads", "测试文件.mp4")
-    if os.path.exists(VIDEO_PATH):
-        extract_chat_from_video(VIDEO_PATH)
-    else:
-        print(f"\n❌ 未找到视频: {VIDEO_PATH}")
-
-    with open(txt_cleaned_path, "w", encoding="utf-8") as f_cleaned:
-        f_cleaned.write("===== 游戏聊天识别结果（已清洗去重）=====\n\n")
-        for idx, r in enumerate(cleaned_records, 1):
-            f_cleaned.write(f"{idx}. {r}\n")
-
-    final_clean_records = []
-    for line in cleaned_records:
-        try:
-            content = line.split("| [发言] ")[1]
-            if len(content.strip()) >= MIN_CONTENT_LENGTH:
-                final_clean_records.append(line)
-        except:
-            continue
-
-    with open(txt_final_cleaned_path, "w", encoding="utf-8") as f_final:
-        f_final.write("===== 最终干净版（已去重+过滤短句）=====\n\n")
-        for idx, r in enumerate(final_clean_records, 1):
-            f_final.write(f"{idx}. {r}\n")
+    test_video = os.path.join(BASE_DIR, "data", "uploads", "测试文件.mp4")
+    if os.path.exists(test_video):
+        extract_chat_from_video(test_video)
