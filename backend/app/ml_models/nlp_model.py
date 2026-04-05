@@ -17,7 +17,6 @@ class RoBERTaAnalyzer:
         print("正在初始化 阴阳怪气/违规检测 本地模型...")
         print(">> 已开启 hf_transfer (Rust并发引擎) 与 国内镜像节点双重加速！")
 
-        # 【核心修复1】：真正使用本地训练好的权重路径！绝不硬编码！
         if weight_path is None:
             # 自动定位到您刚才训练脚本保存的默认路径
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,41 +25,49 @@ class RoBERTaAnalyzer:
         print(f">> 正在加载本地权重: {weight_path}")
 
         try:
-            # 【核心修复2】：从本地路径加载 Tokenizer 和 模型
             self.tokenizer = AutoTokenizer.from_pretrained(weight_path)
             self.model = AutoModelForSequenceClassification.from_pretrained(weight_path)
 
-            # 【核心修复3】：将 pipeline 改为通用的 text-classification
             self.pipeline = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer)
             print(">> 自定义 RoBERTa 模型加载成功！矩阵维度已对齐。")
         except Exception as e:
             print(f"模型加载失败，请检查权重路径是否正确: {e}")
             self.pipeline = None
 
+        # 💡 核心改进：添加前置“规则引擎”词库！
+        # 只要碰到这些词，根本不需要经过大模型算力，直接判死刑！
+        self.black_list = [
+            "乡里人", "乡巴佬", "偷井盖", "南蛮", "白完", "东百",
+            "小日本", "漂亮国", "弯弯", "西八"
+        ]
+
     def predict(self, texts: list, topic: str = "游戏对局") -> float:
         """
         前向传播进行违规概率预测
         """
-        if not texts or self.pipeline is None:
-            return 0.5
+        if not texts:
+            return 0.0  # 没输入文本，绝对安全
 
         combined_text = " ".join(texts)
 
-        # 【核心修复4】：推理时的输入格式必须与训练时（train_text_model.py）严格保持一致
-        input_text = f"话题：{topic} 评论：{combined_text}"
+        # 🚀 绝杀拦截逻辑：在大模型预测之前，先过一遍黑名单词库
+        for bad_word in self.black_list:
+            if bad_word in combined_text:
+                print(f"🚨 [规则引擎拦截]: 检测到恶劣歧视词汇【{bad_word}】！")
+                return 0.95
 
-        # 截断文本以适应 RoBERTa 的 512 token 限制
+        # 💣 严苛逻辑：如果模型没加载成功，直接抛出异常阻断程序！绝不妥协返回 0.5！
+        if self.pipeline is None:
+            raise RuntimeError("🚨 致命错误：RoBERTa 文本大模型未成功加载！请检查权重路径！")
+
+        input_text = f"话题：{topic} 评论：{combined_text}"
         input_text = input_text[:500]
 
-        # 真实张量推理
         result = self.pipeline(input_text)[0]
 
-        # HuggingFace 二分类默认输出 LABEL_0 和 LABEL_1
-        # 假设训练时 1 代表违规/阴阳怪气，0 代表正常
         if result['label'] == 'LABEL_1':
-            return float(result['score'])  # 违规的概率
+            return float(result['score'])
         elif result['label'] == 'LABEL_0':
-            return 1.0 - float(result['score'])  # 正常的概率取反即为违规概率
+            return 1.0 - float(result['score'])
         else:
-            # 兜底兼容
             return float(result['score'])

@@ -20,28 +20,14 @@ except ImportError:
     exit(1)
 
 # ========================
-# 2. 路径配置 (确保前端能读到)
+# 2. 路径配置 (归档 + 前端固定文件)
 # ========================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-output_dir = os.path.join(BASE_DIR, "output")
-legacy_dir = os.path.join(BASE_DIR, "app", "ml_models")
-os.makedirs(output_dir, exist_ok=True)
-os.makedirs(legacy_dir, exist_ok=True)
+OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-latest_log_path_1 = os.path.join(output_dir, "文本识别.txt")
-latest_log_path_2 = os.path.join(legacy_dir, "文本识别.txt")
-
-for path in [latest_log_path_1, latest_log_path_2]:
-    with open(path, "w", encoding="utf-8") as f_init:
-        f_init.write("===== 游戏多模态实时捕获流 =====\n\n")
-
-
-def write_and_flush(filepath, text):
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write(text + "\n")
-        f.flush()
-        os.fsync(f.fileno())
-
+# 供前端实时拉取的唯一固定文件
+FRONTEND_LOG_PATH = os.path.join(OUTPUT_DIR, "文本识别.txt")
 
 # ========================
 # 3. 词表与名字锁定机制
@@ -92,12 +78,27 @@ def is_garbage(text_line):
 # 4. 核心提取与多行合并逻辑
 # ========================
 def extract_chat_from_video(video_path):
+    # 每次运行生成一个新的带时间戳的归档文件
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_log_path = os.path.join(output_dir, f"ocr_result_{timestamp_str}.txt")
-    print(f"\n▶ 引擎启动：【多行合并+极速版】 -> 永久记录保存至 {os.path.basename(run_log_path)}")
+    archive_log_path = os.path.join(OUTPUT_DIR, f"ocr_result_{timestamp_str}.txt")
 
-    with open(run_log_path, "w", encoding="utf-8") as f:
+    print(f"\n▶ 引擎启动：")
+    print(f"  ├─ 历史归档保存至 -> {os.path.basename(archive_log_path)}")
+    print(f"  └─ 前端拉取流更新 -> {os.path.basename(FRONTEND_LOG_PATH)}")
+
+    # 初始化本轮运行的两个文件（覆盖前端旧文件，创建新归档文件）
+    with open(FRONTEND_LOG_PATH, "w", encoding="utf-8") as f:
+        f.write("===== 游戏多模态实时捕获流 =====\n\n")
+    with open(archive_log_path, "w", encoding="utf-8") as f:
         f.write(f"===== 游戏识别日志 ({timestamp_str}) =====\n\n")
+
+    def save_log(text):
+        """双写函数：同时写入归档文件和前端专属文件，并强制落盘"""
+        for path in [FRONTEND_LOG_PATH, archive_log_path]:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(text + "\n")
+                f.flush()
+                os.fsync(f.fileno())
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened(): return []
@@ -105,7 +106,6 @@ def extract_chat_from_video(video_path):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
 
-    # 🎯 提速关键 1：采样率改为 fps（即 1 秒只扫描 1 次，弹幕停留长达 5 秒，绝对扫得到）
     sample_rate = int(fps)
 
     chat_x1, chat_y1, chat_x2, chat_y2 = 0.00, 0.45, 0.45, 0.90
@@ -130,7 +130,6 @@ def extract_chat_from_video(video_path):
             roi = frame[int(h * chat_y1):int(h * chat_y2), int(w * chat_x1):int(w * chat_x2)]
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
-            # 🎯 提速关键 2：放宽光流对比阈值，游戏背景有特效抖动，4.0 以内都算静止
             skip_ocr = False
             if prev_gray is not None:
                 if np.mean(cv2.absdiff(prev_gray, gray)) < 4.0:
@@ -141,7 +140,6 @@ def extract_chat_from_video(video_path):
                 result, _ = ocr_engine(gray)
 
                 if result:
-                    # 💡 解决截断关键：同一帧内的状态机，负责拼合换行文字
                     current_speaker_player = None
                     current_speaker_hero = None
                     current_content = ""
@@ -153,7 +151,6 @@ def extract_chat_from_video(video_path):
 
                         match = pattern.search(text_line)
                         if match:
-                            # 发现了新的发言人头部，把刚才积攒的“老发言”先存起来
                             if current_speaker_hero and current_content:
                                 parsed_messages.append((current_speaker_player, current_speaker_hero, current_content))
 
@@ -161,7 +158,6 @@ def extract_chat_from_video(video_path):
                             raw_hero = match.group(2)
                             current_content = match.group(3).strip()
 
-                            # 净化与锁定
                             player = re.sub(r'^[\[【\(（].*?[\]】\)）]', '', raw_player).strip()
                             player = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5\_]', '', player)
                             hero = refine_hero_name(raw_hero)
@@ -175,14 +171,11 @@ def extract_chat_from_video(video_path):
                                 current_speaker_player, current_speaker_hero = player, hero
 
                         else:
-                            # 💡 没匹配到头部？这很可能是第二行被截断的文本！
                             if current_speaker_hero and current_content:
-                                # 剔除标点符号以外的乱码，拼接到刚才的文字末尾
                                 clean_cont = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fa5，。！？、]', '', text_line)
                                 if clean_cont:
                                     current_content += clean_cont
 
-                    # 收尾帧内最后一句
                     if current_speaker_hero and current_content:
                         parsed_messages.append((current_speaker_player, current_speaker_hero, current_content))
 
@@ -193,17 +186,14 @@ def extract_chat_from_video(video_path):
                         is_duplicate = False
                         if hero in HERO_CHAT_HISTORY:
                             for exist_msg in HERO_CHAT_HISTORY[hero][-8:]:
-                                # 如果新内容包含老内容（说明新内容是老内容的完整换行版），我们应该保留新内容！
                                 if exist_msg in content and len(content) > len(exist_msg):
-                                    pass  # 放行完整版
-                                # 如果新内容只是老内容的一部分，或者高度相似，就是重复
+                                    pass
                                 elif content in exist_msg or SequenceMatcher(None, content, exist_msg).ratio() > 0.80:
                                     is_duplicate = True
                                     break
 
                         if is_duplicate: continue
 
-                        # 确认是新内容
                         if hero not in HERO_CHAT_HISTORY: HERO_CHAT_HISTORY[hero] = []
                         HERO_CHAT_HISTORY[hero].append(content)
 
@@ -211,10 +201,9 @@ def extract_chat_from_video(video_path):
                         ts = f"[{cur_sec // 60:02d}:{cur_sec % 60:02d}]"
                         full_entry = f"{ts} {player}({hero}) | [发言] {content}"
 
+                        # 调用内部函数，同时写入前端流文件与带时间戳的归档文件
                         final_output.append(full_entry)
-                        write_and_flush(run_log_path, full_entry)
-                        write_and_flush(latest_log_path_1, full_entry)
-                        write_and_flush(latest_log_path_2, full_entry)
+                        save_log(full_entry)
                         print(f"\n✅ 精准捕获: {full_entry}")
 
         if time.time() - last_update_time >= 0.5:
