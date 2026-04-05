@@ -4,77 +4,91 @@ import torch
 import os
 import numpy as np
 
-# 导入我们在前面修好的文本模型 (路径根据你的实际项目结构调整)
-from app.ml_models.nlp_model import RoBERTaAnalyzer
+# 统一使用原生文本大模型
+from app.ml_models.text_model import get_toxicity_score
+
+BLACK_LIST = ["乡里人", "乡巴佬", "偷井盖", "南蛮", "白完", "东百", "小日本", "漂亮国", "弯弯", "西八"]
 
 
 def build_graph_data(csv_path):
     if not os.path.exists(csv_path):
-        print(f"错误：找不到文件 {csv_path}")
-        return None
+        return None, None, None, None, None, None
 
-    # 初始化真正的文本大模型
     print("正在启动 NLP 引擎提取节点特征...")
-    nlp_engine = RoBERTaAnalyzer()
-
-    # 读取聊天数据
     df = pd.read_csv(csv_path, encoding='utf-8-sig')
 
     G = nx.DiGraph()
-    # 建立消息节点（注意：以单条聊天记录为节点，而不是单纯的用户，这在溯源里叫信息传播图）
 
-    features_list = []
-    node_mapping = {}  # 将消息/用户 ID 映射为 0, 1, 2...
+    player_stats = {}
+    risk_source_player = None
+    timeline_data = []  # 🌟 新增：专门为前端真实热力图准备的完整时间线
 
     for idx, row in df.iterrows():
-        # 假设 csv 里有 message_id, user, text, target 等字段
-        node_id = str(idx)  # 如果没有唯一 message_id，暂用行号代替
-        u, v = str(row.get('user', '')), str(row.get('target', 'nan'))
+        node_id = str(idx)
+        u = str(row.get('user', f'未知用户{idx}'))
         text = str(row.get('text', ''))
 
-        node_mapping[node_id] = idx
-        G.add_node(node_id, user=u, text=text)
+        if any(bw in text for bw in BLACK_LIST):
+            score = 0.95
+        else:
+            # 🌟 核心修复：只把纯净的【text】喂给模型，绝对不要把前缀拼进去，否则模型会掉精度！
+            prob_dict = get_toxicity_score(text)
+            score = float(prob_dict.get("toxicity_score", 0.0))
 
-        # 核心改进：使用 NLP 引擎计算这句话的“违规风险度”和“语义向量”
-        # 即使无法直接获取 128 维隐藏层，也可以用预测概率 + 文本长度 + 关键词密度等构造真实特征
-        toxicity_score = nlp_engine.predict([text])
+        # 记录到时间线数组
+        timeline_data.append({
+            "user": u,
+            "text": text,
+            "toxicity": score,
+            "step": idx
+        })
 
-        # 这里构造一个简易的真实特征向量 (例如 4 维：违规率, 长度归一化, 是否包含特殊符号, 回复数占位)
-        # 进阶做法是提取 RoBERTa 最后一层的 pooler_output (768维)
-        real_feature = [
-            toxicity_score,
-            min(len(text) / 50.0, 1.0),  # 文本长度特征
-            1.0 if '?' in text or '？' in text or '!' in text else 0.0,  # 情绪符号特征
-            0.0  # 占位符，后续可以加上入度/出度特征
-        ]
-        # 为了适配后续可能的维度要求，用 0 填充到 16 维
-        real_feature.extend([0.0] * 12)
+        if u not in player_stats:
+            player_stats[u] = {"max_score": score, "history": [], "is_source": False}
+
+        player_stats[u]["max_score"] = max(player_stats[u]["max_score"], score)
+        # 🌟 核心改进：把这个玩家说过的每一句话都存起来！
+        player_stats[u]["history"].append({"text": text, "score": score})
+
+        # 抓出第一个高危爆发点作为源头
+        if score > 0.8 and risk_source_player is None:
+            risk_source_player = u
+            player_stats[u]["is_source"] = True
+
+    # 构建前端节点 (以玩家为单位)
+    frontend_nodes = []
+    features_list = []
+    for player, stats in player_stats.items():
+        color = '#F56C6C' if stats['is_source'] else ('#E6A23C' if stats['max_score'] > 0.6 else '#67C23A')
+        size = 60 if stats['is_source'] else (45 if stats['max_score'] > 0.6 else 30)
+
+        frontend_nodes.append({
+            "id": player,
+            "label": player,
+            "toxicity": stats['max_score'],
+            "size": size,
+            "color": color,
+            "history": stats['history']  # 将他的所有历史发言传给前端
+        })
+        G.add_node(player)
+
+        real_feature = [stats['max_score']] + [0.0] * 15
         features_list.append(real_feature)
 
-    # 构建边 (基于回复关系)
-    # 这部分需要根据你的 CSV 逻辑调整，如果 target 是 user_id，就需要找到 target 对应的 message_id
-    # 这里提供一个基于上下文明确的回复链路构建：
-    for idx, row in df.iterrows():
-        target_user = str(row.get('target', 'nan'))
-        if target_user != 'nan':
-            # 找到 target_user 最近发的一条消息作为被回复节点
-            # (省略复杂的查找逻辑，直接演示添加边的过程)
-            # G.add_edge(当前节点, 被回复节点)
-            pass
+    # 构建溯源传播边
+    frontend_edges = []
+    if risk_source_player:
+        for player in player_stats.keys():
+            if player != risk_source_player:
+                weight = player_stats[player]["max_score"]
+                frontend_edges.append({
+                    "source": risk_source_player,
+                    "target": player,
+                    "lineStyle": {"width": weight * 5 + 1, "curveness": 0.2}
+                })
 
-    # 兜底生成边：如果 CSV 里没有复杂的回复关系，根据时间顺序（行号）相连，表示上下文影响
-    edge_list = []
-    for i in range(1, len(df)):
-        edge_list.append([i, i - 1])  # 当前话语受上一句话语影响 (入边)
-
-    if not edge_list:
-        edge_index = torch.zeros((2, 0), dtype=torch.long)
-    else:
-        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
-
-    # 将真实的特征列表转换为张量
     x = torch.tensor(features_list, dtype=torch.float)
+    edge_index = torch.zeros((2, 0), dtype=torch.long)
 
-    print(f"✅ 图构建完成! 节点数: {len(G.nodes)}, 特征维度: {x.shape[1]}")
-    # 不再是瞎编的 randn，而是包含了文本恶意程度的真实张量！
-    return G, x, edge_index, list(G.nodes())
+    # 🌟 注意：这里返回了 6 个变量！多了一个 timeline_data
+    return G, x, edge_index, frontend_nodes, frontend_edges, timeline_data
