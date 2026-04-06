@@ -115,6 +115,10 @@ const videoSrc = ref(null)
 const selectedFileObj = ref(null)
 const isAnalyzing = ref(false)
 
+const messageQueue = ref([]) // 消息缓冲队列
+let renderTimer = null       // 渲染定时器
+
+
 const seenLogsSet = new Set()
 const displayLogs = ref([])
 let logPollingTimer = null
@@ -141,9 +145,11 @@ const clearVideo = () => {
   selectedFileObj.value = null
   if (fileInput.value) fileInput.value.value = ''
 
-  // 清理轮询与数据
+  // 清理轮询与队列数据
   if (logPollingTimer) clearInterval(logPollingTimer)
+  if (renderTimer) clearInterval(renderTimer)
   displayLogs.value = []
+  messageQueue.value = []
   seenLogsSet.clear()
 }
 
@@ -153,20 +159,35 @@ const startAnalysis = async () => {
 
   isAnalyzing.value = true
 
+  // 每次重新开始分析时，确保前端状态已经清空
+  displayLogs.value = []
+  messageQueue.value = []
+  seenLogsSet.clear()
+
   const formData = new FormData()
   formData.append('video_file', selectedFileObj.value)
   formData.append('player_id', 'Monitor_Live_001')
 
+  // 【新增】：开启消费队列的渲染定时器，每 800ms 从队列里拿一条展示，形成“实时弹出”效果
+  renderTimer = setInterval(() => {
+    if (messageQueue.value.length > 0) {
+      const log = messageQueue.value.shift()
+      displayLogs.value.unshift(log)
+    }
+  }, 800)
+
   // 开启轮询拉取日志
   logPollingTimer = setInterval(async () => {
     try {
+      // 建议后端 /api/v1/monitor/logs 接口读取的 txt/json 文件，在每次 /api/v1/analyze/video 被调用时先清空重写
       const res = await axios.get('/api/v1/monitor/logs')
       const incomingLogs = res.data.logs || []
 
       incomingLogs.forEach(line => {
         if (!seenLogsSet.has(line)) {
           seenLogsSet.add(line)
-          displayLogs.value.unshift(line) // 最新弹幕排在最前
+          // 获取到新日志，不直接展示，而是丢入队列排队
+          messageQueue.value.push(line)
         }
       })
     } catch (error) {
@@ -182,7 +203,9 @@ const startAnalysis = async () => {
     console.error("AI 引擎调用异常:", error)
   } finally {
     isAnalyzing.value = false
+    // 视频处理完毕后，可以停止拉取接口，但不要立即停止渲染，等队列消费完再停
     if (logPollingTimer) clearInterval(logPollingTimer)
+    setTimeout(() => { if(renderTimer) clearInterval(renderTimer) }, messageQueue.value.length * 800 + 2000)
   }
 }
 

@@ -4,11 +4,8 @@ import torch
 import os
 import numpy as np
 
-# 统一使用原生文本大模型
+# 统一使用原生文本大模型，所有硬拦截逻辑已下沉至此引擎内部
 from app.ml_models.text_model import get_toxicity_score
-
-BLACK_LIST = ["乡里人", "乡巴佬", "偷井盖", "南蛮", "白完", "东百", "小日本", "漂亮国", "弯弯", "西八"]
-
 
 def build_graph_data(csv_path):
     if not os.path.exists(csv_path):
@@ -28,12 +25,11 @@ def build_graph_data(csv_path):
         u = str(row.get('user', f'未知用户{idx}'))
         text = str(row.get('text', ''))
 
-        if any(bw in text for bw in BLACK_LIST):
-            score = 0.95
-        else:
-            # 🌟 核心修复：只把纯净的【text】喂给模型，绝对不要把前缀拼进去，否则模型会掉精度！
-            prob_dict = get_toxicity_score(text)
-            score = float(prob_dict.get("toxicity_score", 0.0))
+        # 🌟 核心修复：彻底删除原本的 BLACK_LIST 拦截
+        # 直接调用底层的 get_toxicity_score，它内部会自动处理 CORE_BLACK_LIST 的拦截和 0.85~0.95 的随机波动
+        # 这样图谱生成的分数就与实时监控流捕捉的分数绝对统一了！
+        prob_dict = get_toxicity_score(text)
+        score = float(prob_dict.get("toxicity_score", 0.0))
 
         # 记录到时间线数组
         timeline_data.append({
@@ -51,9 +47,23 @@ def build_graph_data(csv_path):
         player_stats[u]["history"].append({"text": text, "score": score})
 
         # 抓出第一个高危爆发点作为源头
-        if score > 0.8 and risk_source_player is None:
-            risk_source_player = u
-            player_stats[u]["is_source"] = True
+        #if score > 0.8 and risk_source_player is None:
+            #risk_source_player = u
+            #player_stats[u]["is_source"] = True
+
+    # 🌟 核心修复 4：全场遍历结束后，找出毒性分值最高的人作为唯一图谱核心污染源！
+    max_global_score = 0.0
+    for p, stats in player_stats.items():
+        if stats["max_score"] > max_global_score and stats["max_score"] > 0.65:  # 设定基础门槛
+            max_global_score = stats["max_score"]
+            risk_source_player = p
+
+    # 给最终确定的源头打上标签
+    if risk_source_player:
+        # 先把所有人的 is_source 重置，防止误判
+        for p in player_stats.keys():
+            player_stats[p]["is_source"] = False
+        player_stats[risk_source_player]["is_source"] = True
 
     # 构建前端节点 (以玩家为单位)
     frontend_nodes = []
