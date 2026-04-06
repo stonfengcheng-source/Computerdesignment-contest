@@ -5,7 +5,7 @@
         <p class="subtitle">专业级净化平台</p>
         <h1 class="title">游戏网络环境净化平台</h1>
         <p class="desc">
-          响应“十五五“规划，打造纯净网络环境。多维度精准识别违规行为，守护游戏生态安全，构建文明健康的数字化娱乐空间。
+          响应"十五五"规划，打造纯净网络环境。多维度精准识别违规行为，守护游戏生态安全，构建文明健康的数字化娱乐空间。
         </p>
         <div class="action-buttons">
           <button class="btn-primary" @click="$router.push('/dashboard')">开始体验</button>
