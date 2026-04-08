@@ -91,34 +91,34 @@
     <section class="bottom-grid">
       <div class="monitor-card card">
         <h3>专项监控数据</h3>
-        <div class="progress-list">
+<div class="progress-list">
           <div class="progress-item">
             <div class="progress-info">
-              <div class="icon-box alert-box">🚨</div>
-              <span class="progress-label">场次预警</span>
+              <div class="icon-box alert-box" style="background: #FEE2E2; color: #DC2626;">🚨</div>
+              <span class="progress-label">高危预警 (严重破坏生态)</span>
               <span class="value text-danger">18</span>
             </div>
-            <div class="progress-bar"><div class="fill danger" style="width: 18%"></div></div>
+            <div class="progress-bar"><div class="fill danger" style="width: 18%; background: #EF4444;"></div></div>
           </div>
           <div class="progress-item">
             <div class="progress-info">
-              <div class="icon-box warning-box">❗</div>
-              <span class="progress-label">严重影响</span>
-              <span class="value text-primary">42</span>
+              <div class="icon-box warning-box" style="background: #DCFCE7; color: #10B981;">⚠️</div>
+              <span class="progress-label">中低危 (轻微阴阳怪气)</span>
+              <span class="value text-success" style="color: #10B981;">42</span>
             </div>
-            <div class="progress-bar"><div class="fill primary" style="width: 42%"></div></div>
+            <div class="progress-bar"><div class="fill success" style="width: 42%; background: #10B981;"></div></div>
           </div>
           <div class="progress-item">
             <div class="progress-info">
-              <div class="icon-box safe-box">🧹</div>
-              <span class="progress-label">风气干净</span>
-              <span class="value text-success">94%</span>
+              <div class="icon-box safe-box" style="background: #D1FAE5; color: #059669;">🛡️</div>
+              <span class="progress-label">风气健康</span>
+              <span class="value text-success" style="color: #059669;">94%</span>
             </div>
-            <div class="progress-bar"><div class="fill success" style="width: 94%"></div></div>
+            <div class="progress-bar"><div class="fill success" style="width: 94%; background: #059669;"></div></div>
           </div>
         </div>
         <div class="system-notice">
-          "系统正在深度识别垂直游戏领域的黑话体系，当前识别库已更新至 1.24.0 版本。"
+          "系统正在深度识别垂直游戏领域的黑话体系"
         </div>
       </div>
 
@@ -266,6 +266,7 @@ const initCharts = () => {
   charts.push(pieChart)
 
   // 5. 底部微型图 (去掉多余元素，只留色块)
+// 5. 底部微型图 (高危红色，中低危绿色)
   const miniOptions = (color) => ({
     grid: { top: 5, right: 0, bottom: 0, left: 0 },
     xAxis: { type: 'category', show: false, data: ['1','2','3','4','5'] },
@@ -273,10 +274,12 @@ const initCharts = () => {
     series: [{ type: 'bar', data: [3, 4, 3, 5, 2], itemStyle: { color: color }, barWidth: '80%' }]
   })
 
-  const m1 = echarts.init(miniChart1.value); m1.setOption(miniOptions('#C6D6FF')); charts.push(m1);
-  const m2 = echarts.init(miniChart2.value); m2.setOption(miniOptions('#FECACA')); charts.push(m2);
-  const m3 = echarts.init(miniChart3.value); m3.setOption(miniOptions('#E2E8F0')); charts.push(m3);
-}
+  // 黑话 (假设为中低危) -> 绿色
+  const m1 = echarts.init(miniChart1.value); m1.setOption(miniOptions('#34D399')); charts.push(m1);
+  // 嘲讽 (高危) -> 红色
+  const m2 = echarts.init(miniChart2.value); m2.setOption(miniOptions('#EF4444')); charts.push(m2);
+  // 阴阳怪气 (中低危) -> 浅绿色
+  const m3 = echarts.init(miniChart3.value); m3.setOption(miniOptions('#6EE7B7')); charts.push(m3);
 
 onMounted(() => {
   initCharts()

@@ -14,10 +14,10 @@ def generate_comprehensive_report(player_id: str, text_toxicity: float, audio_to
     # 实际项目中这里应为: model = xgb.Booster(); model.load_model('xgboost.json'); preds = model.predict(DMatrix(features))
     # 这里用加权公式模拟模型输出 (根据各模态在阴阳怪气/违规中的重要性)
     fused_toxicity_score = (
-            text_toxicity * 0.35 +  # BERT 文本语义
-            audio_toxicity * 0.25 +  # Wav2Vec2 语气
-            behavior_anomaly * 0.25 +  # LSTM 挂机/送人头
-            graph_risk * 0.15  # GAT 社交溯源污染度
+            text_toxicity * 0.65 +  # BERT 文本语义
+            audio_toxicity * 0.00 +  # Wav2Vec2 语气
+            behavior_anomaly * 0.00 +  # LSTM 挂机/送人头
+            graph_risk * 0.35  # GAT 社交溯源污染度
     )
 
     # 2. 评级判定
