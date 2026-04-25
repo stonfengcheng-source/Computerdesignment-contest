@@ -11,7 +11,7 @@ from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
 import random
 import re
-
+import csv
 # ================= 修复 Windows 下 Playwright 的 NotImplementedError =================
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -61,6 +61,18 @@ class TraceRecord(Base):
     risk_class = Column(String(50))
     created_at = Column(DateTime, default=datetime.now)
 
+# ================= 新增：对抗数据独立标注记录表 =================
+class AdversarialAnnotationRecord(Base):
+    __tablename__ = "adversarial_annotations"
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50))
+    content = Column(String(2000))
+    toxic = Column(Integer)
+    toxic_type = Column(Integer)
+    expression = Column(Integer)
+    target = Column(Integer)
+    is_game_jargon = Column(Integer)
+    created_at = Column(DateTime, default=datetime.now)
 
 # ================= 💡 全自动建图引擎 (新增) =================
 import re
@@ -445,6 +457,78 @@ def submit_annotation(record_id: int, data: AnnotationSubmit, db: Session = Depe
 
     db.commit()
     return {"status": "success"}
+
+
+class AdversarialSubmit(BaseModel):
+    platform: str
+    content: str
+    toxic: int
+    toxic_type: int
+    expression: int
+    target: int
+    is_game_jargon: int
+
+
+@crawl_router.get("/unlabeled_adversarial")
+def get_adversarial_data():
+    """读取本地指定的对抗数据集 (使用原生 csv 模块，极度稳定)"""
+    # 动态拼接路径，确保无论在哪里运行都能找到文件
+    csv_path = os.path.join(DATA_DIR, "datasets", "multi_task_train.csv")
+
+    if not os.path.exists(csv_path):
+        return {"error": f"后端报错：找不到文件 {csv_path}", "data": []}
+
+    try:
+        result = []
+        # 使用 utf-8-sig 可以完美兼容带 BOM 的 UTF-8 和普通 UTF-8
+        with open(csv_path, mode="r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for idx, row in enumerate(reader):
+                # 限制只读取前 3000 条
+                if idx >= 3000:
+                    break
+
+                # 安全转换整数，遇到空值或乱码统统转换为 -1
+                def safe_int(val):
+                    try:
+                        return int(float(val)) if val and str(val).strip() else -1
+                    except:
+                        return -1
+
+                result.append({
+                    "id": idx + 1,
+                    "text": str(row.get('content', '')),
+                    "source": str(row.get('platform', '未知')),
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "annotated": False,
+                    "toxic": safe_int(row.get('toxic')),
+                    "toxic_type": safe_int(row.get('toxic_type')),
+                    "expression": safe_int(row.get('expression')),
+                    "target": safe_int(row.get('target')),
+                    "is_game_jargon": safe_int(row.get('is_game_jargon'))
+                })
+        return {"data": result}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": f"后端解析CSV失败：{str(e)}", "data": []}
+
+
+@crawl_router.post("/annotate_adversarial")
+def submit_adversarial_annotation(data: AdversarialSubmit, db: Session = Depends(get_db)):
+    """接收前端对齐/纠偏后的数据，保存到独立的专用表内以备反馈提取"""
+    new_record = AdversarialAnnotationRecord(
+        platform=data.platform,
+        content=data.content,
+        toxic=data.toxic,
+        toxic_type=data.toxic_type,
+        expression=data.expression,
+        target=data.target,
+        is_game_jargon=data.is_game_jargon
+    )
+    db.add(new_record)
+    db.commit()
+    return {"status": "success", "message": "对抗数据标注已成功存入独立新表"}
 
 
 app.include_router(crawl_router)
