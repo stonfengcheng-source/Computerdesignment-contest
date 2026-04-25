@@ -3,7 +3,7 @@
     <header class="toolbar card">
       <div class="toolbar-left">
         <svg class="icon text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        <span class="toolbar-title">当前语料池: <span class="text-primary cursor-pointer">ToxiCN_1.0 数据集</span></span>
+        <span class="toolbar-title">当前语料池: <span class="text-primary cursor-pointer">多任务对抗数据集</span></span>
       </div>
       <div class="toolbar-center">
         <div class="search-box">
@@ -82,19 +82,69 @@
           </div>
 
           <div class="label-actions">
-            <span class="content-label">毒性分类标注</span>
-            <div class="action-buttons">
-              <button class="btn-tag danger" @click="submitLabel('严重违规')">严重违规 (仇恨/歧视)</button>
-              <button class="btn-tag warning" @click="submitLabel('轻度违规')">轻度违规 (阴阳怪气/嘲讽)</button>
-              <button class="btn-tag success" @click="submitLabel('安全合规')">安全合规</button>
-            </div>
+            <span class="content-label">对抗数据多维特征对齐与标注</span>
+            <el-form :model="annotation" label-width="120px" class="adversarial-form" style="margin-top: 15px;">
+
+              <el-form-item label="是否违规(toxic)">
+                <el-radio-group v-model="annotation.toxic">
+                  <el-radio :label="1">是 (违规)</el-radio>
+                  <el-radio :label="0">否 (合规)</el-radio>
+                  <el-radio :label="-1">不确定/无</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="违规类型">
+                <el-select v-model="annotation.toxic_type" placeholder="请选择违规类型" size="small" style="width: 100%;">
+                  <el-option label="地域歧视 (0)" :value="0" />
+                  <el-option label="种族歧视 (1)" :value="1" />
+                  <el-option label="性别歧视 (2)" :value="2" />
+                  <el-option label="LGBTQ+ 歧视 (3)" :value="3" />
+                  <el-option label="其他违规 (4)" :value="4" />
+                  <el-option label="无/不适用 (-1)" :value="-1" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="表达方式">
+                <el-select v-model="annotation.expression" placeholder="请选择表达方式" size="small" style="width: 100%;">
+                  <el-option label="直白辱骂 (0)" :value="0" />
+                  <el-option label="刻板印象/贴标签 (1)" :value="1" />
+                  <el-option label="阴阳怪气/反讽 (2)" :value="2" />
+                  <el-option label="隐喻/内涵 (3)" :value="3" />
+                  <el-option label="无/不适用 (-1)" :value="-1" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="攻击目标">
+                <el-select v-model="annotation.target" placeholder="请选择攻击目标" size="small" style="width: 100%;">
+                  <el-option label="特定群体/群体泛指 (0)" :value="0" />
+                  <el-option label="特定个人/对线玩家 (1)" :value="1" />
+                  <el-option label="游戏官方/策划 (2)" :value="2" />
+                  <el-option label="无明确目标/发泄 (3)" :value="3" />
+                  <el-option label="无/不适用 (-1)" :value="-1" />
+                </el-select>
+              </el-form-item>
+
+              <el-form-item label="游戏黑话">
+                <el-radio-group v-model="annotation.is_game_jargon">
+                  <el-radio :label="1">包含黑话/行话</el-radio>
+                  <el-radio :label="0">纯日常用语</el-radio>
+                  <el-radio :label="-1">无法判断</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="primary" @click="submitAnnotation" size="small" style="width: 100%;">
+                  确认打标并写入独立新表
+                </el-button>
+              </el-form-item>
+            </el-form>
           </div>
         </div>
 
         <div class="statusbar">
           <div class="status-left">
             <span class="status-item"><span class="dot-green"></span> IDE核心: 活跃</span>
-            <span class="status-item text-secondary" style="color: #64748B;">数据源集群: 已连接 (ToxiCN_1.0)</span>
+            <span class="status-item text-secondary" style="color: #64748B;">数据源集群: 已连接 (自构数据集)</span>
           </div>
           <div class="status-right text-secondary">
             网络延迟: 24ms | 节点: 主节点-01
@@ -103,34 +153,34 @@
       </div>
     </section>
 
-    <section class="performance-banner">
+<section class="performance-banner">
       <div class="banner-content">
         <div class="banner-header">
           <svg class="icon text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <span>标注规范</span>
+          <span>自构对抗数据集特色</span>
         </div>
         <ul class="rule-list">
-          <li>参考 ToxiCN 数据集标准，识别文本中的显性与隐性攻击。</li>
-          <li>遇到边缘语境（如游戏黑话、反讽），需结合具体业务场景进行研判。</li>
+          <li>本语料池深度整合了多维度的游戏生态对抗性文本，专注攻克游戏黑话、隐晦攻击、阴阳怪气等复杂识别场景。</li>
+          <li>为保障工作台流畅度与内存性能，当前视图已智能截断并为您展示前 3000 条高价值待对齐特征数据。</li>
         </ul>
       </div>
 
       <div class="banner-stats-box">
         <div class="stats-text-area">
-          <h2>实时标注效能</h2>
-          <p>过去 24 小时内，深蓝卫士共协助处理 42,901 条对抗性语料，净化成功率提升至 98.4%。</p>
+          <h2>多模态自构语料库效能</h2>
+          <p>深蓝卫士专属多任务标注流：正在实时映射本地自构对抗语料，支持 5 大特征维度的精细化人工纠偏与入库操作。</p>
           <div class="stats-numbers">
             <div class="num-item">
-              <h3>3.2k</h3>
-              <span>今日个人已标</span>
+              <h3>3,000</h3>
+              <span>当前池容量</span>
             </div>
             <div class="num-item">
-              <h3>12.5m</h3>
-              <span>全网监测总量</span>
+              <h3>5维</h3>
+              <span>特征对齐标签</span>
             </div>
             <div class="num-item">
-              <h3>0.08s</h3>
-              <span>模型响应均值</span>
+              <h3>0.02s</h3>
+              <span>本地读取延迟</span>
             </div>
           </div>
         </div>
@@ -143,8 +193,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const corpusList = ref([])
+const annotation = ref({
+  toxic: -1,
+  toxic_type: -1,
+  expression: -1,
+  target: -1,
+  is_game_jargon: -1
+})
+
 const currentCorpus = ref(null)
 const isLoading = ref(false)
 
@@ -167,33 +226,66 @@ const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
 const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
 // ------------------------
 
-
 const fetchCorpusData = async () => {
   isLoading.value = true
   try {
-    const response = await axios.get('/api/datasets/toxicn')
-    if (response.data && !response.data.error) {
-      corpusList.value = response.data // 完全相信后端传来的真实数据
+    const response = await axios.get('http://127.0.0.1:8000/api/v1/data/unlabeled_adversarial')
+
+    // 如果后端传回了 error 字段，立刻在网页上弹窗报警！
+    if (response.data && response.data.error) {
+      ElMessage.error(response.data.error)
+    }
+
+    if (response.data && response.data.data && response.data.data.length > 0) {
+      corpusList.value = response.data.data
     } else {
-      corpusList.value = [] // 如果后端没数据，就是空数组，不再造假
+      corpusList.value = []
+      if (!response.data.error) {
+        ElMessage.warning('数据集读取成功，但是里面没有数据行！')
+      }
     }
   } catch (error) {
-    console.error("无法连接后端读取真实数据集", error)
-    corpusList.value = [] // 报错时也置空
+    console.error("无法连接后端", error)
+    ElMessage.error('无法连接到后端，请检查后端黑窗是否正在运行！')
+    corpusList.value = []
   } finally {
     isLoading.value = false
   }
 }
 
-const selectCorpus = (item) => { currentCorpus.value = item }
-
-const submitLabel = (label) => {
-  if (!currentCorpus.value) return
-  const itemIndex = corpusList.value.findIndex(i => i.id === currentCorpus.value.id)
-  if (itemIndex > -1) {
-    corpusList.value[itemIndex].status = '已完成'
+const selectCorpus = (item) => {
+  currentCorpus.value = item
+  annotation.value = {
+    toxic: item.toxic !== undefined ? item.toxic : -1,
+    toxic_type: item.toxic_type !== undefined ? item.toxic_type : -1,
+    expression: item.expression !== undefined ? item.expression : -1,
+    target: item.target !== undefined ? item.target : -1,
+    is_game_jargon: item.is_game_jargon !== undefined ? item.is_game_jargon : -1
   }
-  currentCorpus.value = null
+}
+
+const submitAnnotation = async () => {
+  if (!currentCorpus.value) return
+
+  try {
+    const payload = {
+      platform: currentCorpus.value.source,
+      content: currentCorpus.value.text,
+      ...annotation.value
+    }
+    await axios.post('http://127.0.0.1:8000/api/v1/data/annotate_adversarial', payload)
+
+    const itemIndex = corpusList.value.findIndex(i => i.id === currentCorpus.value.id)
+    if (itemIndex > -1) {
+      corpusList.value[itemIndex].status = '已标注'
+    }
+
+    ElMessage.success('对抗数据已成功打标！特征已持久化入库新表')
+    currentCorpus.value = null
+  } catch (error) {
+    ElMessage.error('标注提交失败，请检查后端引擎状态')
+    console.error(error)
+  }
 }
 
 onMounted(() => { fetchCorpusData() })
